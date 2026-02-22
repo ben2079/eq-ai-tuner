@@ -23,7 +23,7 @@ import argparse
 import os
 import sys
 import time
-from typing import Iterable, List, Optional
+from typing import Dict, Iterable, List, Optional
 
 import requests
 
@@ -33,6 +33,11 @@ IG_API_VERSION = "v21.0"
 
 class PostingError(RuntimeError):
     pass
+
+
+class SafeFormatDict(dict):
+    def __missing__(self, key):
+        return "{" + key + "}"
 
 
 def require_env(name: str) -> str:
@@ -160,6 +165,44 @@ def parse_platforms(raw: str) -> List[str]:
     return platforms
 
 
+def parse_template_vars(items: List[str]) -> Dict[str, str]:
+    out: Dict[str, str] = {}
+    for item in items:
+        if "=" not in item:
+            raise PostingError(f"Invalid --template-var '{item}', expected key=value")
+        k, v = item.split("=", 1)
+        k = k.strip()
+        if not k:
+            raise PostingError(f"Invalid --template-var '{item}', empty key")
+        out[k] = v
+    return out
+
+
+def build_message(
+    message: str,
+    template_file: str,
+    template_vars: Dict[str, str],
+    link: Optional[str],
+) -> str:
+    if not template_file:
+        return message
+
+    if not os.path.exists(template_file):
+        raise PostingError(f"Template file not found: {template_file}")
+
+    with open(template_file, "r", encoding="utf-8") as f:
+        template = f.read()
+
+    merged = dict(template_vars)
+    if link and "link" not in merged:
+        merged["link"] = link
+
+    rendered = template.format_map(SafeFormatDict(merged)).strip()
+    if not rendered:
+        raise PostingError("Rendered template is empty")
+    return rendered
+
+
 def post_to_platforms(
     platforms: Iterable[str],
     message: str,
@@ -187,6 +230,13 @@ def build_parser() -> argparse.ArgumentParser:
         help="Comma-separated: facebook,instagram,linkedin",
     )
     parser.add_argument("--message", required=True, help="Post text")
+    parser.add_argument("--template-file", default="", help="Optional text template file for message body")
+    parser.add_argument(
+        "--template-var",
+        action="append",
+        default=[],
+        help="Template variable key=value (repeatable)",
+    )
     parser.add_argument("--link", default="", help="Optional link appended to message")
     parser.add_argument("--image-url", default="", help="Required for Instagram image post")
     parser.add_argument(
@@ -208,9 +258,16 @@ def main() -> int:
     args = build_parser().parse_args()
     try:
         platforms = parse_platforms(args.platforms)
+        vars_map = parse_template_vars(args.template_var)
+        final_message = build_message(
+            message=args.message,
+            template_file=args.template_file,
+            template_vars=vars_map,
+            link=args.link or None,
+        )
         results = post_to_platforms(
             platforms=platforms,
-            message=args.message,
+            message=final_message,
             link=args.link or None,
             image_url=args.image_url or None,
             dry_run=args.dry_run,

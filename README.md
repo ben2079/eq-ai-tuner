@@ -176,10 +176,24 @@ python3 scripts/social_post_agent.py \
   --no-dry-run
 ```
 
+Template-based post text:
+
+```bash
+python3 scripts/social_post_agent.py \
+  --platforms facebook,linkedin \
+  --template-file scripts/post_template_release.txt \
+  --template-var version=v0.1.3 \
+  --template-var repo=https://github.com/ben2079/eq-ai-tuner \
+  --template-var release=https://github.com/ben2079/eq-ai-tuner/releases/tag/v0.1.3 \
+  --link "https://github.com/ben2079/eq-ai-tuner" \
+  --dry-run
+```
+
 Instagram note:
 
 - Instagram posting requires `--image-url` with a publicly reachable image URL.
 - The script uses `requests`; install with `pip install requests` if needed.
+- `--template-file` supports Python-style placeholders, for example `{version}`, `{repo}`, `{release}`, `{link}`.
 
 ## Contributing
 
