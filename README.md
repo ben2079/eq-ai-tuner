@@ -136,4 +136,4 @@ git push -u origin main
 
 ## License
 
-Add a license file before publishing (for example MIT).
+MIT. See `LICENSE`.
