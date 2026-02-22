@@ -136,6 +136,51 @@ git push -u origin main
 - Prefer mild limits first (`+/-6 dB`).
 - Re-run analysis on different content before locking in permanent settings.
 
+## Social Posting Agent
+
+Automate release announcements to Facebook, Instagram, and LinkedIn via official APIs.
+
+Files:
+
+- `scripts/social_post_agent.py`
+- `scripts/social_post_agent.env.example`
+
+Setup:
+
+```bash
+cd eq-ai-tuner
+cp scripts/social_post_agent.env.example .env.social
+# Fill in tokens/IDs in .env.social
+set -a
+source .env.social
+set +a
+```
+
+Dry-run preview:
+
+```bash
+python3 scripts/social_post_agent.py \
+  --platforms facebook,linkedin \
+  --message "EQ AI Tuner v0.1.2 is live" \
+  --link "https://github.com/ben2079/eq-ai-tuner" \
+  --dry-run
+```
+
+Real post:
+
+```bash
+python3 scripts/social_post_agent.py \
+  --platforms facebook,linkedin \
+  --message "EQ AI Tuner v0.1.2 is live" \
+  --link "https://github.com/ben2079/eq-ai-tuner" \
+  --no-dry-run
+```
+
+Instagram note:
+
+- Instagram posting requires `--image-url` with a publicly reachable image URL.
+- The script uses `requests`; install with `pip install requests` if needed.
+
 ## Contributing
 
 See `CONTRIBUTING.md`.
