@@ -49,6 +49,32 @@
       margin-right: auto;
     }
     .meta { color: var(--muted); font-size: 14px; }
+    .controls {
+      width: 100%;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      align-items: center;
+      margin-top: 4px;
+    }
+    .controls label { font-size: 13px; color: var(--muted); }
+    select, input[type="number"], input[type="text"] {
+      background: #0f1f30;
+      border: 1px solid #355a74;
+      color: var(--text);
+      border-radius: 8px;
+      padding: 6px 8px;
+    }
+    button {
+      background: linear-gradient(180deg, #1d5e84, #134867);
+      border: 1px solid #4f86a7;
+      color: #e9f7ff;
+      border-radius: 10px;
+      padding: 8px 12px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+    .status { font-size: 13px; color: #9ad9b2; }
     .canvas-wrap { padding: 8px 16px 20px; }
     canvas { width: 100%; height: 520px; display: block; }
   </style>
@@ -60,6 +86,40 @@
       <div class="meta" id="metaMode">Mode: -</div>
       <div class="meta" id="metaSource">Source: -</div>
       <div class="meta" id="metaTime">Updated: -</div>
+      <div class="controls">
+        <label>Mode
+          <select id="modeSel">
+            <option value="auto">auto</option>
+            <option value="ai" selected>ai</option>
+            <option value="manual">manual</option>
+          </select>
+        </label>
+        <label>Style
+          <select id="styleSel">
+            <option value="balanced" selected>balanced</option>
+            <option value="bass">bass</option>
+            <option value="clarity">clarity</option>
+            <option value="vocal">vocal</option>
+          </select>
+        </label>
+        <label>Seconds
+          <input id="secondsInp" type="number" min="2" max="20" value="4" />
+        </label>
+        <label>Max Boost
+          <input id="boostInp" type="number" min="1" max="24" step="0.5" value="6" />
+        </label>
+        <label>Max Cut
+          <input id="cutInp" type="number" min="1" max="24" step="0.5" value="6" />
+        </label>
+        <label>Manual Profile
+          <input id="manualProfileInp" type="text" value="configs/manual_profile.example.json" />
+        </label>
+        <label>
+          <input id="applyChk" type="checkbox" checked /> Apply to EasyEffects
+        </label>
+        <button id="runBtn">Run Now</button>
+        <div class="status" id="runStatus">Idle</div>
+      </div>
     </div>
     <div class="canvas-wrap">
       <canvas id="eqCanvas" width="1160" height="520"></canvas>
@@ -105,6 +165,39 @@
           updateTarget(data);
         }
       } catch (_) {}
+    }
+
+    async function runAnalysis() {
+      const payload = {
+        mode: document.getElementById('modeSel').value,
+        style: document.getElementById('styleSel').value,
+        seconds: Number(document.getElementById('secondsInp').value || 4),
+        max_boost: Number(document.getElementById('boostInp').value || 6),
+        max_cut: Number(document.getElementById('cutInp').value || 6),
+        manual_profile: document.getElementById('manualProfileInp').value,
+        apply: document.getElementById('applyChk').checked,
+      };
+
+      const status = document.getElementById('runStatus');
+      status.textContent = 'Running...';
+      status.style.color = '#ffe39a';
+      try {
+        const res = await fetch('/api/run', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+        const data = await res.json();
+        if (!res.ok || !data.ok) {
+          throw new Error(data.error || 'Request failed');
+        }
+        status.textContent = `Done (${data.mode}/${data.style})`;
+        status.style.color = '#9ad9b2';
+        await fetchSnapshot();
+      } catch (err) {
+        status.textContent = `Error: ${err.message}`;
+        status.style.color = '#ff9c9c';
+      }
     }
 
     function drawGrid(x0, y0, w, h, minDb, maxDb) {
@@ -178,6 +271,7 @@
     }
 
     setInterval(fetchSnapshot, 1200);
+    document.getElementById('runBtn').addEventListener('click', runAnalysis);
     fetchSnapshot();
     requestAnimationFrame(draw);
   </script>

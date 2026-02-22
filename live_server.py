@@ -2,8 +2,13 @@
 import argparse
 import json
 import os
+import traceback
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import urlparse
+
+from eq20.core import analyze_stream, save_snapshot
+from eq20.easyeffects import apply_split_20band
+from eq20.profiles import load_manual_profile
 
 
 class Handler(SimpleHTTPRequestHandler):
@@ -25,6 +30,62 @@ class Handler(SimpleHTTPRequestHandler):
                 self.wfile.write(json.dumps({"status": "waiting", "message": "No snapshot yet"}).encode("utf-8"))
             return
         return super().do_GET()
+
+    def _json_response(self, code: int, payload: dict):
+        self.send_response(code)
+        self.send_header("Content-Type", "application/json; charset=utf-8")
+        self.end_headers()
+        self.wfile.write(json.dumps(payload).encode("utf-8"))
+
+    def do_POST(self):
+        parsed = urlparse(self.path)
+        if parsed.path != "/api/run":
+            self._json_response(404, {"error": "Not found"})
+            return
+
+        try:
+            length = int(self.headers.get("Content-Length", "0"))
+            body = self.rfile.read(length) if length > 0 else b"{}"
+            req = json.loads(body.decode("utf-8"))
+
+            mode = req.get("mode", "auto")
+            style = req.get("style", "balanced")
+            apply = bool(req.get("apply", False))
+            seconds = int(req.get("seconds", 4))
+            max_boost = float(req.get("max_boost", 6.0))
+            max_cut = float(req.get("max_cut", 6.0))
+            manual_profile = req.get("manual_profile", "configs/manual_profile.example.json")
+
+            manual_l = manual_r = None
+            if mode == "manual":
+                manual_l, manual_r = load_manual_profile(manual_profile)
+
+            result = analyze_stream(
+                seconds=seconds,
+                mode=mode,
+                style=style,
+                max_boost=max_boost,
+                max_cut=max_cut,
+                manual_l=manual_l,
+                manual_r=manual_r,
+            )
+            save_snapshot(self.snapshot_path, result)
+
+            if apply:
+                apply_split_20band(result.bands_hz, result.gains_l_db, result.gains_r_db)
+
+            self._json_response(
+                200,
+                {
+                    "ok": True,
+                    "mode": result.mode,
+                    "style": result.style,
+                    "applied": apply,
+                    "snapshot": self.snapshot_path,
+                },
+            )
+        except Exception as exc:
+            self._json_response(500, {"ok": False, "error": str(exc), "trace": traceback.format_exc()})
 
 
 def main():
