@@ -185,6 +185,8 @@ def build_message(
     link: Optional[str],
 ) -> str:
     if not template_file:
+        if not message.strip():
+            raise PostingError("Provide --message or --template-file")
         return message
 
     if not os.path.exists(template_file):
@@ -229,7 +231,7 @@ def build_parser() -> argparse.ArgumentParser:
         required=True,
         help="Comma-separated: facebook,instagram,linkedin",
     )
-    parser.add_argument("--message", required=True, help="Post text")
+    parser.add_argument("--message", default="", help="Post text (optional when --template-file is used)")
     parser.add_argument("--template-file", default="", help="Optional text template file for message body")
     parser.add_argument(
         "--template-var",
