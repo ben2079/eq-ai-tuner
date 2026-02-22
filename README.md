@@ -140,6 +140,12 @@ git push -u origin main
 
 See `CONTRIBUTING.md`.
 
+## Community
+
+- Code of Conduct: `CODE_OF_CONDUCT.md`
+- Security Policy: `SECURITY.md`
+- Pull Request Template: `.github/pull_request_template.md`
+
 ## License
 
 MIT. See `LICENSE`.
