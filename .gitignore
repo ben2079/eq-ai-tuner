@@ -1,0 +1,8 @@
+__pycache__/
+*.pyc
+*.pyo
+*.swp
+.venv/
+.env
+*.log
+data/latest_snapshot.json

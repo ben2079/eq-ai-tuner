@@ -1,0 +1,185 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>EQ Live 2CH/20-Band</title>
+  <style>
+    :root {
+      --bg1: #0b1220;
+      --bg2: #102b3a;
+      --panel: #112235cc;
+      --line: #2a4c63;
+      --text: #dcefff;
+      --muted: #8cb9d3;
+      --left: #67c6ff;
+      --right: #66e2a8;
+      --grid: #21445a;
+    }
+    body {
+      margin: 0;
+      font-family: "DejaVu Sans", "Noto Sans", sans-serif;
+      color: var(--text);
+      background: radial-gradient(1200px 700px at 15% 10%, #1f3550, transparent),
+                  radial-gradient(900px 600px at 90% 80%, #123c35, transparent),
+                  linear-gradient(180deg, var(--bg1), var(--bg2));
+      min-height: 100vh;
+      padding: 20px;
+    }
+    .wrap {
+      max-width: 1200px;
+      margin: 0 auto;
+      background: var(--panel);
+      border: 1px solid #2d546d;
+      border-radius: 14px;
+      overflow: hidden;
+      box-shadow: 0 18px 50px #0008;
+    }
+    .head {
+      padding: 16px 20px;
+      border-bottom: 1px solid #295069;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px 20px;
+      align-items: center;
+    }
+    .title {
+      font-size: 22px;
+      font-weight: 700;
+      margin-right: auto;
+    }
+    .meta { color: var(--muted); font-size: 14px; }
+    .canvas-wrap { padding: 8px 16px 20px; }
+    canvas { width: 100%; height: 520px; display: block; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="head">
+      <div class="title">Live EQ 2CH / 20 Band</div>
+      <div class="meta" id="metaMode">Mode: -</div>
+      <div class="meta" id="metaSource">Source: -</div>
+      <div class="meta" id="metaTime">Updated: -</div>
+    </div>
+    <div class="canvas-wrap">
+      <canvas id="eqCanvas" width="1160" height="520"></canvas>
+    </div>
+  </div>
+
+  <script>
+    const canvas = document.getElementById('eqCanvas');
+    const ctx = canvas.getContext('2d');
+
+    let current = null;
+    let target = null;
+
+    function lerp(a, b, t) { return a + (b - a) * t; }
+
+    function initState(data) {
+      current = {
+        bands: data.bands_hz.slice(),
+        l: data.gains_l_db.slice(),
+        r: data.gains_r_db.slice(),
+      };
+      target = JSON.parse(JSON.stringify(current));
+    }
+
+    function updateTarget(data) {
+      if (!current) {
+        initState(data);
+      } else {
+        target.bands = data.bands_hz.slice();
+        target.l = data.gains_l_db.slice();
+        target.r = data.gains_r_db.slice();
+      }
+      document.getElementById('metaMode').textContent = `Mode: ${data.mode} (${data.style})`;
+      document.getElementById('metaSource').textContent = `Source: ${data.source}`;
+      document.getElementById('metaTime').textContent = `Updated: ${new Date((data.timestamp || 0) * 1000).toLocaleTimeString()}`;
+    }
+
+    async function fetchSnapshot() {
+      try {
+        const res = await fetch('/api/snapshot', { cache: 'no-store' });
+        const data = await res.json();
+        if (data && data.gains_l_db && data.gains_r_db && data.bands_hz) {
+          updateTarget(data);
+        }
+      } catch (_) {}
+    }
+
+    function drawGrid(x0, y0, w, h, minDb, maxDb) {
+      ctx.strokeStyle = '#21445a';
+      ctx.lineWidth = 1;
+      for (let db = minDb; db <= maxDb; db += 3) {
+        const y = y0 + (maxDb - db) / (maxDb - minDb) * h;
+        ctx.beginPath();
+        ctx.moveTo(x0, y);
+        ctx.lineTo(x0 + w, y);
+        ctx.stroke();
+      }
+    }
+
+    function draw() {
+      const w = canvas.width;
+      const h = canvas.height;
+      ctx.clearRect(0, 0, w, h);
+
+      const padL = 60, padR = 20, padT = 18, padB = 78;
+      const pw = w - padL - padR;
+      const ph = h - padT - padB;
+      const minDb = -12, maxDb = 12;
+
+      drawGrid(padL, padT, pw, ph, minDb, maxDb);
+
+      if (!current || !target) {
+        requestAnimationFrame(draw);
+        return;
+      }
+
+      for (let i = 0; i < current.l.length; i++) {
+        current.l[i] = lerp(current.l[i], target.l[i], 0.16);
+        current.r[i] = lerp(current.r[i], target.r[i], 0.16);
+      }
+
+      const n = current.bands.length;
+      const pairW = pw / n;
+      const barW = pairW * 0.34;
+
+      for (let i = 0; i < n; i++) {
+        const xPair = padL + i * pairW;
+        const xL = xPair + pairW * 0.08;
+        const xR = xPair + pairW * 0.54;
+
+        const l = Math.max(minDb, Math.min(maxDb, current.l[i]));
+        const r = Math.max(minDb, Math.min(maxDb, current.r[i]));
+
+        const yZero = padT + (maxDb - 0) / (maxDb - minDb) * ph;
+        const yL = padT + (maxDb - l) / (maxDb - minDb) * ph;
+        const yR = padT + (maxDb - r) / (maxDb - minDb) * ph;
+
+        ctx.fillStyle = '#67c6ff';
+        ctx.fillRect(xL, Math.min(yZero, yL), barW, Math.abs(yZero - yL));
+
+        ctx.fillStyle = '#66e2a8';
+        ctx.fillRect(xR, Math.min(yZero, yR), barW, Math.abs(yZero - yR));
+
+        if (i % 2 === 0) {
+          ctx.fillStyle = '#9cc6dd';
+          ctx.font = '12px DejaVu Sans';
+          ctx.textAlign = 'center';
+          ctx.fillText(Math.round(current.bands[i]).toString(), xPair + pairW * 0.5, h - 32);
+        }
+      }
+
+      ctx.strokeStyle = '#5f9fbc';
+      ctx.strokeRect(padL, padT, pw, ph);
+
+      requestAnimationFrame(draw);
+    }
+
+    setInterval(fetchSnapshot, 1200);
+    fetchSnapshot();
+    requestAnimationFrame(draw);
+  </script>
+</body>
+</html>
