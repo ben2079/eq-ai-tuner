@@ -1,5 +1,7 @@
 # EQ AI Tuner (2CH / 20-Band)
 
+[![CI](https://github.com/ben2079/eq-ai-tuner/actions/workflows/ci.yml/badge.svg)](https://github.com/ben2079/eq-ai-tuner/actions/workflows/ci.yml)
+
 Real-time stereo EQ tuning pipeline for Linux web audio (for example TIDAL in browser) with:
 
 - `Manual` settings (per-channel, per-band)
@@ -133,6 +135,10 @@ git push -u origin main
 - Start with low volume after applying new profiles.
 - Prefer mild limits first (`+/-6 dB`).
 - Re-run analysis on different content before locking in permanent settings.
+
+## Contributing
+
+See `CONTRIBUTING.md`.
 
 ## License
 
