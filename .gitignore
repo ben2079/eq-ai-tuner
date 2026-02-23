@@ -4,5 +4,7 @@ __pycache__/
 *.swp
 .venv/
 .env
+.env.*
+!.env*.example
 *.log
 data/latest_snapshot.json
