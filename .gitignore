@@ -8,3 +8,6 @@ __pycache__/
 !.env*.example
 *.log
 data/latest_snapshot.json
+data/ml_eq_model.json
+data/claude_history.json
+data/openai_history.json

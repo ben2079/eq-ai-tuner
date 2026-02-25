@@ -31,6 +31,8 @@ def run_once(args):
         max_cut=args.max_cut,
         manual_l=manual_l,
         manual_r=manual_r,
+        model_path=args.model_path,
+        high_res=args.high_res,
     )
 
     os.makedirs(os.path.dirname(args.snapshot), exist_ok=True)
@@ -50,8 +52,12 @@ def run_loop(args):
 
 
 def build_parser():
-    p = argparse.ArgumentParser(description="2CH/20-band EQ analyzer with manual, auto and AI-driven modes")
-    p.add_argument("--mode", choices=["manual", "auto", "ai"], default="auto")
+    p = argparse.ArgumentParser(description="2CH/20-band EQ analyzer with manual, auto, AI, ML, Claude and OpenAI hybrid modes")
+    p.add_argument(
+        "--mode",
+        choices=["manual", "auto", "ai", "ml", "claude_ml", "hybrid", "openai_ml", "hybrid_openai"],
+        default="auto",
+    )
     p.add_argument("--style", choices=["balanced", "bass", "clarity", "vocal"], default="balanced")
     p.add_argument("--manual-profile", default="configs/manual_profile.example.json")
     p.add_argument("--seconds", type=int, default=6)
@@ -62,6 +68,8 @@ def build_parser():
     p.add_argument("--max-boost", type=float, default=12.0)
     p.add_argument("--max-cut", type=float, default=12.0)
     p.add_argument("--snapshot", default="data/latest_snapshot.json")
+    p.add_argument("--model-path", default="data/ml_eq_model.json")
+    p.add_argument("--high-res", action="store_true", help="Enable 20-band high-res frequency layout (requires >=96kHz)")
     p.add_argument("--apply", action="store_true")
     p.add_argument("--loop", action="store_true")
     return p

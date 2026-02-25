@@ -1,139 +1,773 @@
 <!doctype html>
-<html lang="en">
+<html lang="de">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>EQ Live 2CH/20-Band</title>
+  <title>ai.bentu EQ Control</title>
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%23090c11'/%3E%3Ctext x='12' y='42' font-size='28' fill='%23d2d8de' font-family='Arial'%3Eab%3C/text%3E%3C/svg%3E" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=Chakra+Petch:wght@500;700&display=swap" media="print" onload="this.media='all'" />
   <style>
     :root {
-      --bg1: #0b1220;
-      --bg2: #102b3a;
-      --panel: #112235cc;
-      --line: #2a4c63;
-      --text: #dcefff;
-      --muted: #8cb9d3;
-      --left: #67c6ff;
-      --right: #66e2a8;
-      --grid: #21445a;
+      --bg-0: #040508;
+      --bg-1: #0c0f14;
+      --bg-2: #11151c;
+      --line: #2a313b;
+      --line-2: #3a4450;
+      --text: #e1e6ec;
+      --muted: #9ca6b3;
+      --accent: #c7d2dd;
+      --left: #9eb8d7;
+      --right: #d2d8de;
+      --ok: #9ad9b2;
+      --warn: #f5d58e;
+      --err: #f2a7a7;
+      --right-pane-width: 390px;
+      --spectrum-height: 50%;
     }
+
+    html,
     body {
       margin: 0;
-      font-family: "DejaVu Sans", "Noto Sans", sans-serif;
-      color: var(--text);
-      background: radial-gradient(1200px 700px at 15% 10%, #1f3550, transparent),
-                  radial-gradient(900px 600px at 90% 80%, #123c35, transparent),
-                  linear-gradient(180deg, var(--bg1), var(--bg2));
-      min-height: 100vh;
-      padding: 20px;
-    }
-    .wrap {
-      max-width: 1200px;
-      margin: 0 auto;
-      background: var(--panel);
-      border: 1px solid #2d546d;
-      border-radius: 14px;
-      overflow: hidden;
-      box-shadow: 0 18px 50px #0008;
-    }
-    .head {
-      padding: 16px 20px;
-      border-bottom: 1px solid #295069;
-      display: flex;
-      flex-wrap: wrap;
-      gap: 8px 20px;
-      align-items: center;
-    }
-    .title {
-      font-size: 22px;
-      font-weight: 700;
-      margin-right: auto;
-    }
-    .meta { color: var(--muted); font-size: 14px; }
-    .controls {
       width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: radial-gradient(1200px 800px at 15% 10%, #121722, transparent),
+                  radial-gradient(900px 700px at 85% 80%, #12161c, transparent),
+                  linear-gradient(180deg, var(--bg-0), var(--bg-1));
+      color: var(--text);
+      font-family: "IBM Plex Sans", "Noto Sans", sans-serif;
+      line-height: 1.35;
+      font-size: 15px;
+    }
+
+    .app {
+      width: 100%;
+      height: 100%;
+      display: grid;
+      grid-template-rows: 68px 1fr;
+      gap: 10px;
+      padding: 10px;
+      box-sizing: border-box;
+    }
+
+    .topbar {
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      background: linear-gradient(180deg, #ffffff14, #ffffff06);
+      display: grid;
+      grid-template-columns: 300px 1fr;
+      align-items: center;
+      padding: 10px 14px;
+      box-sizing: border-box;
+      box-shadow: 0 14px 34px #0008;
+    }
+
+    .brand {
+      font-family: "Chakra Petch", "Space Grotesk", sans-serif;
+      font-size: 35px;
+      letter-spacing: 0.02em;
+      color: #f0f2f6;
+      text-shadow: 0 0 18px #ffffff24;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .meta-row {
       display: flex;
       flex-wrap: wrap;
+      gap: 8px;
+      justify-content: flex-end;
+    }
+
+    .meta-chip {
+      background: #12161dcf;
+      border: 1px solid var(--line-2);
+      border-radius: 999px;
+      padding: 6px 10px;
+      font-size: 13px;
+      color: #b7c0cc;
+      max-width: 320px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .meta-chip.banner {
+      border-color: #7a5f2f;
+      color: #f5d58e;
+      background: #2b2112;
+      animation: pulseBanner 1.4s ease-in-out infinite;
+      display: none;
+    }
+
+    .meta-chip.banner.active {
+      display: inline-block;
+    }
+
+    @keyframes pulseBanner {
+      0% { opacity: 0.7; }
+      50% { opacity: 1; }
+      100% { opacity: 0.7; }
+    }
+
+    .layout {
+      min-height: 0;
+      display: grid;
+      grid-template-columns: minmax(560px, calc(100% - var(--right-pane-width) - 8px)) 8px minmax(320px, var(--right-pane-width));
+      gap: 10px;
+    }
+
+    .left-pane,
+    .right-pane {
+      min-height: 0;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      background: #0d1118e0;
+      box-shadow: 0 16px 34px #0007;
+      overflow: hidden;
+    }
+
+    .left-pane {
+      display: grid;
+      grid-template-rows: 50px 1fr;
+      gap: 8px;
+      padding: 8px;
+      box-sizing: border-box;
+    }
+
+    .viz-stack {
+      min-height: 0;
+      display: grid;
+      grid-template-rows: minmax(170px, var(--spectrum-height)) 8px minmax(170px, 1fr);
+      gap: 0;
+    }
+
+    .panel-title-row {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      justify-content: space-between;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: #121822;
+      padding: 8px 10px;
+      font-size: 13px;
+      color: #b3bcc8;
+    }
+
+    .legend {
+      display: flex;
       gap: 10px;
       align-items: center;
-      margin-top: 4px;
+      font-size: 12px;
+      color: #aab4c2;
     }
-    .controls label { font-size: 13px; color: var(--muted); }
-    select, input[type="number"], input[type="text"] {
-      background: #0f1f30;
-      border: 1px solid #355a74;
-      color: var(--text);
-      border-radius: 8px;
-      padding: 6px 8px;
+
+    .legend-dot {
+      width: 9px;
+      height: 9px;
+      border-radius: 50%;
+      display: inline-block;
+      margin-right: 4px;
+      vertical-align: middle;
     }
-    button {
-      background: linear-gradient(180deg, #1d5e84, #134867);
-      border: 1px solid #4f86a7;
-      color: #e9f7ff;
-      border-radius: 10px;
-      padding: 8px 12px;
+
+    .panel-title {
+      color: #dfe4eb;
       font-weight: 700;
+      letter-spacing: 0.03em;
+      text-transform: uppercase;
+    }
+
+    .viz {
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: linear-gradient(180deg, #0d1016, #090c11);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .loading-overlay {
+      position: absolute;
+      inset: 0;
+      display: grid;
+      place-items: center;
+      z-index: 5;
+      background: linear-gradient(180deg, #0c1118ea, #0a0e15ea);
+      color: #c6ced8;
+      font-size: 13px;
+      letter-spacing: 0.02em;
+      transition: opacity 220ms ease;
+    }
+
+    .loading-overlay.hidden {
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .loading-card {
+      width: min(420px, 72%);
+      display: grid;
+      gap: 8px;
+    }
+
+    .shimmer {
+      height: 10px;
+      border-radius: 999px;
+      background: linear-gradient(90deg, #1a2330 0%, #344153 50%, #1a2330 100%);
+      background-size: 220% 100%;
+      animation: shimmer 1.15s linear infinite;
+    }
+
+    @keyframes shimmer {
+      from { background-position: 180% 0; }
+      to { background-position: -40% 0; }
+    }
+
+    .viz canvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+
+    .viz-badge {
+      position: absolute;
+      top: 8px;
+      left: 10px;
+      background: #161b24ce;
+      border: 1px solid #3a4350;
+      border-radius: 999px;
+      padding: 4px 8px;
+      font-size: 11px;
+      color: #d2dae5;
+      z-index: 3;
+    }
+
+    .viz-badge.custom {
+      background: #2a2012e8;
+      border-color: #8f7040;
+      color: #f5d58e;
+      box-shadow: 0 0 0 1px #0005;
+    }
+
+    .splitter {
+      background: linear-gradient(180deg, #3c4858, #25303d);
+      border: 1px solid #516073;
+      border-radius: 999px;
+      opacity: 0.9;
+      transition: opacity 120ms ease, background 120ms ease;
+      touch-action: none;
+    }
+
+    .splitter:hover,
+    .splitter.dragging {
+      opacity: 1;
+      background: linear-gradient(180deg, #5f6d81, #3a4758);
+    }
+
+    .splitter-v {
+      cursor: col-resize;
+      align-self: stretch;
+      margin-top: 4px;
+      margin-bottom: 4px;
+      min-width: 10px;
+    }
+
+    .splitter-h {
+      cursor: row-resize;
+      margin-left: 6px;
+      margin-right: 6px;
+      min-height: 10px;
+    }
+
+    .right-pane {
+      display: grid;
+      grid-template-rows: 44px 1fr;
+      min-height: 0;
+    }
+
+    .tabs {
+      display: flex;
+      gap: 6px;
+      padding: 8px;
+      border-bottom: 1px solid var(--line);
+      background: #121722;
+    }
+
+    .tab-btn {
+      border: 1px solid #4a5361;
+      background: #1a202b;
+      color: #c8d1dc;
+      border-radius: 8px;
+      padding: 7px 10px;
+      font-size: 13px;
       cursor: pointer;
     }
-    .status { font-size: 13px; color: #9ad9b2; }
-    .canvas-wrap { padding: 8px 16px 20px; }
-    canvas { width: 100%; height: 520px; display: block; }
+
+    .tab-btn.active {
+      background: linear-gradient(180deg, #677282, #4a5564);
+      border-color: #8c97a4;
+      color: #f4f7fa;
+    }
+
+    .tab-panel {
+      min-height: 0;
+      overflow: auto;
+      padding: 10px;
+      box-sizing: border-box;
+      display: none;
+      gap: 8px;
+      align-content: start;
+    }
+
+    .tab-panel.active {
+      display: grid;
+    }
+
+    .setting-card {
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: #0f141d;
+      padding: 8px;
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 6px 8px;
+      align-items: center;
+    }
+
+    .setting-title {
+      font-size: 14px;
+      color: #dde4ec;
+      font-weight: 600;
+    }
+
+    .setting-help {
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      border: 1px solid #6e7783;
+      background: #2e3540;
+      color: #f0f4f8;
+      font-size: 12px;
+      font-weight: 700;
+      cursor: pointer;
+      line-height: 1;
+      padding: 0;
+    }
+
+    .setting-row {
+      grid-column: 1 / -1;
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .setting-row input[type="text"],
+    .setting-row input[type="number"],
+    .setting-row select {
+      width: 100%;
+      border: 1px solid #404a57;
+      background: #0b0f15;
+      color: var(--text);
+      border-radius: 8px;
+      padding: 7px 9px;
+      box-sizing: border-box;
+      font-size: 14px;
+      font-weight: 500;
+    }
+
+    .setting-row.checkbox {
+      justify-content: flex-start;
+      font-size: 14px;
+      color: #c3ccda;
+    }
+
+    .action-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+
+    .preset-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 6px;
+    }
+
+    .btn {
+      border: 1px solid #7a8491;
+      background: linear-gradient(180deg, #626b77, #444d58);
+      color: #f2f5f8;
+      border-radius: 10px;
+      padding: 9px 10px;
+      cursor: pointer;
+      font-weight: 700;
+      font-size: 14px;
+    }
+
+    .btn.small {
+      padding: 7px 8px;
+      font-size: 14px;
+    }
+
+    .btn.active-preset {
+      border-color: #a9b6c6;
+      background: linear-gradient(180deg, #7b8899, #596676);
+      box-shadow: inset 0 0 0 1px #d6deea33, 0 0 0 1px #0004;
+      color: #f7fbff;
+    }
+
+    .status-grid {
+      display: grid;
+      gap: 6px;
+    }
+
+    .status-line {
+      border: 1px solid #37414d;
+      background: #121822;
+      border-radius: 8px;
+      padding: 7px 8px;
+      font-size: 14px;
+      color: #b7c2d1;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .help-box {
+      border: 1px solid #3f4957;
+      background: #131925;
+      border-radius: 10px;
+      padding: 10px;
+      font-size: 14px;
+      color: #e0e7f0;
+      line-height: 1.35;
+      min-height: 72px;
+    }
+
+    .help-list {
+      display: grid;
+      gap: 6px;
+    }
+
+    .help-item {
+      border: 1px solid #364150;
+      border-radius: 8px;
+      background: #0f151f;
+      padding: 8px;
+      font-size: 14px;
+      color: #c6d0de;
+      line-height: 1.35;
+    }
+
+    body.dragging {
+      user-select: none;
+      cursor: grabbing;
+    }
+
+    @media (max-width: 1220px) {
+      .layout {
+        grid-template-columns: minmax(460px, calc(100% - 350px - 8px)) 8px minmax(300px, 350px);
+      }
+    }
+
+    @media (max-width: 1020px) {
+      .app {
+        grid-template-rows: 62px 1fr;
+      }
+      .layout {
+        grid-template-columns: 1fr;
+        grid-template-rows: 1fr 40%;
+      }
+      .splitter-v {
+        display: none;
+      }
+      .topbar {
+        grid-template-columns: 220px 1fr;
+      }
+      .brand {
+        font-size: 28px;
+      }
+      .preset-row {
+        grid-template-columns: 1fr;
+      }
+    }
   </style>
 </head>
 <body>
-  <div class="wrap">
-    <div class="head">
-      <div class="title">Live EQ 2CH / 20 Band</div>
-      <div class="meta" id="metaMode">Mode: -</div>
-      <div class="meta" id="metaSource">Source: -</div>
-      <div class="meta" id="metaTime">Updated: -</div>
-      <div class="controls">
-        <label>Mode
-          <select id="modeSel">
-            <option value="auto">auto</option>
-            <option value="ai" selected>ai</option>
-            <option value="manual">manual</option>
-          </select>
-        </label>
-        <label>Style
-          <select id="styleSel">
-            <option value="balanced" selected>balanced</option>
-            <option value="bass">bass</option>
-            <option value="clarity">clarity</option>
-            <option value="vocal">vocal</option>
-          </select>
-        </label>
-        <label>Seconds
-          <input id="secondsInp" type="number" min="2" max="20" value="4" />
-        </label>
-        <label>Max Boost
-          <input id="boostInp" type="number" min="1" max="24" step="0.5" value="6" />
-        </label>
-        <label>Max Cut
-          <input id="cutInp" type="number" min="1" max="24" step="0.5" value="6" />
-        </label>
-        <label>Manual Profile
-          <input id="manualProfileInp" type="text" value="configs/manual_profile.example.json" />
-        </label>
-        <label>
-          <input id="applyChk" type="checkbox" checked /> Apply to EasyEffects
-        </label>
-        <button id="runBtn">Run Now</button>
-        <div class="status" id="runStatus">Idle</div>
+  <div class="app">
+    <div class="topbar">
+      <div class="brand">"ai.bentu"</div>
+      <div class="meta-row">
+        <div class="meta-chip banner" id="reconnectBanner">Stream reconnecting...</div>
+        <div class="meta-chip" id="metaMode">Mode: -</div>
+        <div class="meta-chip" id="metaSource">Source: -</div>
+        <div class="meta-chip" id="metaRate">Rate: -</div>
+        <div class="meta-chip" id="metaModel">Model: -</div>
+        <div class="meta-chip" id="metaTime">Updated: -</div>
       </div>
     </div>
-    <div class="canvas-wrap">
-      <canvas id="eqCanvas" width="1160" height="520"></canvas>
+
+    <div class="layout">
+      <div class="left-pane">
+        <div class="panel-title-row">
+          <div class="panel-title">Live Visuals</div>
+          <div class="legend">
+            <span><span class="legend-dot" style="background:#9eb8d7"></span>L</span>
+            <span><span class="legend-dot" style="background:#d2d8de"></span>R</span>
+            <span>Space=start/stop</span>
+            <span>R=run once</span>
+          </div>
+          <div id="liveHint">Realtime stream active...</div>
+        </div>
+
+        <div class="viz-stack" id="vizStack">
+          <div class="viz" id="spectrumViz">
+            <div class="viz-badge" id="spectrumBadge">Spectrum Analyzer (Bars)</div>
+            <div class="loading-overlay" id="loadingOverlay">
+              <div class="loading-card">
+                <div>Initialisiere Live Analyzer...</div>
+                <div class="shimmer"></div>
+                <div class="shimmer"></div>
+                <div class="shimmer"></div>
+              </div>
+            </div>
+            <canvas id="spectrumCanvas" width="1600" height="420"></canvas>
+          </div>
+
+          <div class="splitter splitter-h" id="hSplit" title="Panels vertikal skalieren"></div>
+
+          <div class="viz" id="eqViz">
+            <div class="viz-badge" id="eqBadge">EQ Gains + Update Overlay</div>
+            <canvas id="eqCanvas" width="1600" height="420"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <div class="splitter splitter-v" id="vSplit" title="Sidebar-Breite anpassen"></div>
+
+      <div class="right-pane">
+        <div class="tabs">
+          <button class="tab-btn active" data-tab="settingsTab">Settings</button>
+          <button class="tab-btn" data-tab="helpTab">Hilfe</button>
+        </div>
+
+        <div class="tab-panel active" id="settingsTab">
+          <div class="setting-card">
+            <div class="setting-title">Mode</div>
+            <button class="setting-help" data-help="Waehlt den Analysemodus. Fuer dein Setup ist hybrid_openai empfohlen: OpenAI wenn verfuegbar, lokales ML als Fallback.">?</button>
+            <div class="setting-row">
+              <select id="modeSel">
+                <option value="auto">auto</option>
+                <option value="vis">vis (nur Visualisierung)</option>
+                <option value="ai">ai</option>
+                <option value="ml">ml</option>
+                <option value="claude_ml">claude_ml</option>
+                <option value="hybrid">hybrid</option>
+                <option value="openai_ml">openai_ml</option>
+                <option value="hybrid_openai" selected>hybrid_openai</option>
+                <option value="parametric_openai">parametric EQ (OpenAI)</option>
+                <option value="manual">manual</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="setting-card">
+            <div class="setting-title">Style</div>
+            <button class="setting-help" data-help="Klangziel fuer die EQ-Form: balanced (neutral), bass (mehr low end), clarity (mehr praesenz), vocal (stimmenfokus).">?</button>
+            <div class="setting-row">
+              <select id="styleSel">
+                <option value="balanced" selected>balanced</option>
+                <option value="bass">bass</option>
+                <option value="clarity">clarity</option>
+                <option value="vocal">vocal</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="setting-card">
+            <div class="setting-title">Rate + High-Res</div>
+            <button class="setting-help" data-help="Sample Rate bestimmt die obere Grenzfrequenz. High-Res-Baender bis 28k funktionieren erst ab 96kHz. Unter 96k wird automatisch auf 20k Top-Band zurueckgefallen.">?</button>
+            <div class="setting-row">
+              <input id="rateInp" type="number" min="44100" max="192000" step="100" value="48000" />
+            </div>
+            <div class="setting-row checkbox">
+              <input id="highResChk" type="checkbox" />&nbsp;High-Res Bands
+            </div>
+          </div>
+
+          <div class="setting-card">
+            <div class="setting-title">Timing</div>
+            <button class="setting-help" data-help="Seconds = Analysefenster, Interval = Abstand zwischen Runs, Smoothing = Daempfung gegen Spruenge. Fuer Live oft 2-4s / 1.0-1.5s / 0.3-0.5.">?</button>
+            <div class="setting-row">
+              <input id="secondsInp" type="number" min="1" max="20" value="4" />
+            </div>
+            <div class="setting-row">
+              <input id="intervalInp" type="number" min="0.2" max="15" step="0.1" value="1.5" />
+            </div>
+            <div class="setting-row">
+              <input id="smoothInp" type="number" min="0.05" max="1" step="0.05" value="0.4" />
+            </div>
+          </div>
+
+          <div class="setting-card">
+            <div class="setting-title">Visualizer</div>
+            <button class="setting-help" data-help="Profile steuern Traegheit und Peak-Hold vom Spectrum: smooth (ruhig), club (aggressiv), studio (ausgewogen). Splitter Snap rastet auf Grid ein. Adaptive FPS spart CPU im Idle und bleibt bei Aktivitaet fluessig.">?</button>
+            <div class="setting-row">
+              <select id="visProfileSel">
+                <option value="smooth">smooth</option>
+                <option value="club">club</option>
+                <option value="studio" selected>studio</option>
+              </select>
+            </div>
+            <div class="setting-row checkbox">
+              <input id="splitSnapChk" type="checkbox" checked />&nbsp;Splitter Snap to Grid
+            </div>
+            <div class="setting-row checkbox">
+              <input id="adaptiveFpsChk" type="checkbox" checked />&nbsp;Adaptive Render FPS
+            </div>
+            <div class="setting-row">
+              <select id="eqFlashSel">
+                <option value="off">EQ Update Glow: aus</option>
+                <option value="subtle" selected>EQ Update Glow: dezent</option>
+                <option value="medium">EQ Update Glow: mittel</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="setting-card">
+            <div class="setting-title">Gain Limits</div>
+            <button class="setting-help" data-help="Sicherheitsgrenzen fuer Boost/Cut pro Band. Ueblich sind 4-6 dB fuer stabile Ergebnisse und weniger Hoermuedigkeit.">?</button>
+            <div class="setting-row">
+              <input id="boostInp" type="number" min="1" max="24" step="0.5" value="6" />
+            </div>
+            <div class="setting-row">
+              <input id="cutInp" type="number" min="1" max="24" step="0.5" value="6" />
+            </div>
+          </div>
+
+          <div class="setting-card">
+            <div class="setting-title">Paths + Source</div>
+            <button class="setting-help" data-help="Manual Profile nur fuer manual mode. ML Model Path speichert lokalen Lernstand. Source leer = Default Monitor, sonst z.B. easyeffects_sink.monitor.">?</button>
+            <div class="setting-row">
+              <input id="manualProfileInp" type="text" value="configs/manual_profile.example.json" />
+            </div>
+            <div class="setting-row">
+              <input id="modelPathInp" type="text" value="data/ml_eq_model.json" />
+            </div>
+            <div class="setting-row">
+              <input id="sourceInp" type="text" value="easyeffects_sink.monitor" />
+            </div>
+            <div class="setting-row checkbox">
+              <input id="applyChk" type="checkbox" checked />&nbsp;Apply to EasyEffects
+            </div>
+          </div>
+
+          <div class="action-row">
+            <button class="btn" id="runBtn">Run Once</button>
+            <button class="btn" id="runParamBtn">Run Parametric EQ</button>
+            <button class="btn" id="probeBtn">Probe Providers</button>
+            <button class="btn" id="agentStartBtn">Agent Start</button>
+            <button class="btn" id="agentStopBtn">Agent Stop</button>
+          </div>
+
+          <div class="preset-row">
+            <button class="btn small" id="presetLiveFast">Preset: Live Fast</button>
+            <button class="btn small" id="presetLiveSmooth">Preset: Live Smooth</button>
+            <button class="btn small" id="presetHiRes">Preset: HiRes Studio</button>
+          </div>
+
+          <div class="preset-row">
+            <button class="btn small" id="presetVisBroadcast">Visualizer: Broadcast</button>
+            <button class="btn small" id="presetVisClub">Visualizer: Club</button>
+            <button class="btn small" id="presetVisStudioMaster">Visualizer: Studio Master</button>
+          </div>
+
+          <div class="status-grid">
+            <div class="status-line" id="runStatus">Run: idle</div>
+            <div class="status-line" id="agentStatus">Agent: unknown</div>
+            <div class="status-line" id="streamStatus">Stream: connecting...</div>
+            <div class="status-line" id="providerStatus">Providers: checking...</div>
+            <div class="status-line" id="renderStatus">Render: booting...</div>
+            <div class="status-line" id="timingHint">Timing hint: waiting...</div>
+          </div>
+        </div>
+
+        <div class="tab-panel" id="helpTab">
+          <div class="help-box" id="helpBox">Klicke auf ein ? neben einem Setting fuer kontextbezogene Hilfe.</div>
+          <div class="help-list">
+            <div class="help-item"><strong>Realtime Spectrum:</strong> Oben siehst du Pegelkurven pro Band (L/R) inkl. Verlaufsspuren und Peak-Hold.</div>
+            <div class="help-item"><strong>EQ Overlay:</strong> Unten siehst du Ziel-Gains mit Update-Trails, damit Veraenderungen zwischen Runs sofort sichtbar werden.</div>
+            <div class="help-item"><strong>No Scroll Design:</strong> Die Oberflaeche nutzt den Browser vollstaendig, Panels skalieren auf die verfuegbare Hoehe.</div>
+            <div class="help-item"><strong>High-Res:</strong> 26/28k nur sinnvoll bei 96kHz+, sonst automatischer Fallback auf 20k.</div>
+            <div class="help-item"><strong>Shortcuts:</strong> Taste <code>Space</code> startet/stoppt den Agent, <code>R</code> macht Run Once, <code>P</code> fuehrt Provider Probe aus.</div>
+            <div class="help-item"><strong>Presets:</strong> Schnellprofile fuer unterschiedliche Einsatzarten. Presets setzen mehrere Werte gleichzeitig und sparen manuelle Klicks.</div>
+            <div class="help-item"><strong>Visualizer Presets:</strong> <code>1</code>=Broadcast, <code>2</code>=Club, <code>3</code>=Studio Master.</div>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 
   <script>
-    const canvas = document.getElementById('eqCanvas');
-    const ctx = canvas.getContext('2d');
+    const spectrumCanvas = document.getElementById('spectrumCanvas');
+    const spectrumCtx = spectrumCanvas.getContext('2d');
+    const eqCanvas = document.getElementById('eqCanvas');
+    const eqCtx = eqCanvas.getContext('2d');
 
     let current = null;
     let target = null;
+    let spectrumCurrentL = null;
+    let spectrumCurrentR = null;
+    let spectrumTargetL = null;
+    let spectrumTargetR = null;
+
+    // Fast FFT spectrum state
+    let fastSpectrum = null;
+    let fastSpecSmL = null;
+    let fastSpecSmR = null;
+
+    // Parametric EQ state
+    let paramBandsL = [];
+    let paramBandsR = [];
+
+    let overlayHistory = [];
+    let spectrumHistory = [];
+    let peakHoldL = null;
+    let peakHoldR = null;
+    let updateFlash = 0.0;
+    let updateCounter = 0;
+    let agentRunningCache = false;
+    let hasFirstSnapshot = false;
+    let isDraggingV = false;
+    let isDraggingH = false;
+    let peakHoldAgeL = null;
+    let peakHoldAgeR = null;
+    let renderLastTs = 0;
+    let renderFpsTs = 0;
+    let renderFpsFrames = 0;
+    let renderMeasuredFps = 0;
+    let activeVisPreset = 'vis_studio_master';
+
+    const VIS_PROFILES = {
+      smooth: { spectrumLerp: 0.14, peakBaseDecay: 0.04, peakAgeBoost: 0.010, peakMaxDecay: 0.65 },
+      studio: { spectrumLerp: 0.20, peakBaseDecay: 0.07, peakAgeBoost: 0.015, peakMaxDecay: 1.20 },
+      club: { spectrumLerp: 0.28, peakBaseDecay: 0.10, peakAgeBoost: 0.022, peakMaxDecay: 1.70 },
+    };
 
     function lerp(a, b, t) { return a + (b - a) * t; }
+
+    function setStatus(id, text, kind) {
+      const el = document.getElementById(id);
+      el.textContent = text;
+      if (kind === 'ok') el.style.color = '#9ad9b2';
+      else if (kind === 'warn') el.style.color = '#f5d58e';
+      else if (kind === 'err') el.style.color = '#f2a7a7';
+      else el.style.color = '#9ca6b3';
+    }
 
     function initState(data) {
       current = {
@@ -142,101 +776,624 @@
         r: data.gains_r_db.slice(),
       };
       target = JSON.parse(JSON.stringify(current));
+
+      spectrumCurrentL = data.levels_l_db.slice();
+      spectrumCurrentR = data.levels_r_db.slice();
+      spectrumTargetL = data.levels_l_db.slice();
+      spectrumTargetR = data.levels_r_db.slice();
+      peakHoldL = data.levels_l_db.slice();
+      peakHoldR = data.levels_r_db.slice();
+      peakHoldAgeL = data.levels_l_db.map(() => 0);
+      peakHoldAgeR = data.levels_r_db.map(() => 0);
+    }
+
+    function dbToY(db, top, height, minDb, maxDb) {
+      return top + (maxDb - db) / (maxDb - minDb) * height;
+    }
+
+    function formatBandHz(hz) {
+      if (hz >= 1000) return (Math.round((hz / 1000) * 10) / 10).toString() + 'k';
+      return Math.round(hz).toString();
+    }
+
+    function getVisProfile() {
+      const id = document.getElementById('visProfileSel');
+      const key = id ? id.value : 'studio';
+      return VIS_PROFILES[key] || VIS_PROFILES.studio;
+    }
+
+    function getEqFlashProfile() {
+      const mode = document.getElementById('eqFlashSel')?.value || 'subtle';
+      if (mode === 'off') return { enabled: false, max: 0, fill: 0, stroke: 0, lw: 0 };
+      if (mode === 'medium') return { enabled: true, max: 0.28, fill: 0.14, stroke: 0.72, lw: 1.2 };
+      return { enabled: true, max: 0.18, fill: 0.08, stroke: 0.45, lw: 1.0 };
+    }
+
+    function sanitizeLevelArray(arr, fallback, n, minDb = -90, maxDb = -10) {
+      const out = new Array(n);
+      const src = Array.isArray(arr) ? arr : [];
+      const fb = Array.isArray(fallback) ? fallback : [];
+      for (let i = 0; i < n; i++) {
+        let v = Number(src[i]);
+        if (!Number.isFinite(v)) {
+          const f = Number(fb[i]);
+          v = Number.isFinite(f) ? f : minDb;
+        }
+        out[i] = Math.max(minDb, Math.min(maxDb, v));
+      }
+      return out;
+    }
+
+    function stabilizeStereoForViz(levelsL, levelsR) {
+      const n = Math.min(levelsL.length, levelsR.length);
+      if (n <= 0) return { l: levelsL, r: levelsR };
+
+      let meanL = 0;
+      let meanR = 0;
+      for (let i = 0; i < n; i++) {
+        meanL += levelsL[i];
+        meanR += levelsR[i];
+      }
+      meanL /= n;
+      meanR /= n;
+
+      // If one side is much lower, gently blend for display-only stability.
+      const diff = Math.abs(meanL - meanR);
+      if (diff < 18) return { l: levelsL, r: levelsR };
+
+      const blend = Math.min(0.75, 0.45 + (diff - 18) * 0.02);
+      const outL = levelsL.slice();
+      const outR = levelsR.slice();
+      if (meanL < meanR) {
+        for (let i = 0; i < n; i++) outL[i] = lerp(outL[i], outR[i], blend);
+      } else {
+        for (let i = 0; i < n; i++) outR[i] = lerp(outR[i], outL[i], blend);
+      }
+      return { l: outL, r: outR };
+    }
+
+    function visPresetLabel(name) {
+      if (name === 'vis_broadcast') return 'Broadcast';
+      if (name === 'vis_club') return 'Club';
+      if (name === 'vis_studio_master') return 'Studio Master';
+      return 'Custom';
+    }
+
+    function updateVisPresetUi() {
+      const map = {
+        vis_broadcast: 'presetVisBroadcast',
+        vis_club: 'presetVisClub',
+        vis_studio_master: 'presetVisStudioMaster',
+      };
+      Object.keys(map).forEach((k) => {
+        const el = document.getElementById(map[k]);
+        if (!el) return;
+        el.classList.toggle('active-preset', k === activeVisPreset);
+      });
+      const badge = document.getElementById('spectrumBadge');
+      if (badge) {
+        badge.textContent = `Spectrum Analyzer (Bars) | ${visPresetLabel(activeVisPreset)}`;
+        badge.classList.toggle('custom', activeVisPreset === 'custom');
+      }
+      localStorage.setItem('eq_ui_active_vis_preset', activeVisPreset);
+    }
+
+    function inferVisPreset() {
+      const profile = document.getElementById('visProfileSel').value;
+      const snap = document.getElementById('splitSnapChk').checked;
+      const adaptive = document.getElementById('adaptiveFpsChk').checked;
+      const smooth = Number(document.getElementById('smoothInp').value || 0);
+
+      const near = (a, b) => Math.abs(a - b) <= 0.02;
+      if (profile === 'smooth' && snap && adaptive && near(smooth, 0.45)) return 'vis_broadcast';
+      if (profile === 'club' && !snap && !adaptive && near(smooth, 0.55)) return 'vis_club';
+      if (profile === 'studio' && snap && adaptive && near(smooth, 0.35)) return 'vis_studio_master';
+      return 'custom';
     }
 
     function updateTarget(data) {
-      if (!current) {
-        initState(data);
-      } else {
-        target.bands = data.bands_hz.slice();
-        target.l = data.gains_l_db.slice();
-        target.r = data.gains_r_db.slice();
+      if (!current || current.bands.length !== data.bands_hz.length) initState(data);
+
+      const n = data.bands_hz.length;
+      const safeL = sanitizeLevelArray(data.levels_l_db, spectrumTargetL || spectrumCurrentL, n);
+      const safeR = sanitizeLevelArray(data.levels_r_db, spectrumTargetR || spectrumCurrentR, n);
+      const stabilized = stabilizeStereoForViz(safeL, safeR);
+
+      target.bands = data.bands_hz.slice();
+      target.l = data.gains_l_db.slice();
+      target.r = data.gains_r_db.slice();
+
+      spectrumTargetL = stabilized.l;
+      spectrumTargetR = stabilized.r;
+
+      overlayHistory.push({ t: Date.now(), l: data.gains_l_db.slice(), r: data.gains_r_db.slice() });
+      if (overlayHistory.length > 24) overlayHistory = overlayHistory.slice(-24);
+
+      spectrumHistory.push({ t: Date.now(), l: stabilized.l.slice(), r: stabilized.r.slice() });
+      if (spectrumHistory.length > 26) spectrumHistory = spectrumHistory.slice(-26);
+
+      updateCounter += 1;
+      updateFlash = 1.0;
+
+      if (!hasFirstSnapshot) {
+        hasFirstSnapshot = true;
+        const overlay = document.getElementById('loadingOverlay');
+        overlay.classList.add('hidden');
       }
+
       document.getElementById('metaMode').textContent = `Mode: ${data.mode} (${data.style})`;
-      document.getElementById('metaSource').textContent = `Source: ${data.source}`;
+      document.getElementById('metaSource').textContent = `Source: ${data.source || '-'}`;
+      document.getElementById('metaRate').textContent = `Rate: ${data.rate || 48000} Hz | High-Res: ${data.high_res ? 'on' : 'off'}`;
       document.getElementById('metaTime').textContent = `Updated: ${new Date((data.timestamp || 0) * 1000).toLocaleTimeString()}`;
+
+      if (data.model_info && data.model_info.type) {
+        const conf = Number(data.model_info.confidence || 0).toFixed(2);
+        const step = data.model_info.train_step || '-';
+        document.getElementById('metaModel').textContent = `Model: ${data.model_info.type} | conf=${conf} | step=${step}`;
+      } else if (data.model_info && data.model_info.bands_l) {
+        // Parametric EQ snapshot
+        paramBandsL = data.model_info.bands_l || [];
+        paramBandsR = data.model_info.bands_r || [];
+        document.getElementById('metaModel').textContent = `Parametric EQ | ${paramBandsL.length} Bänder | ${data.model_info.model || ''}`;
+      } else {
+        document.getElementById('metaModel').textContent = 'Model: heuristic';
+      }
     }
 
     async function fetchSnapshot() {
       try {
         const res = await fetch('/api/snapshot', { cache: 'no-store' });
         const data = await res.json();
-        if (data && data.gains_l_db && data.gains_r_db && data.bands_hz) {
+        if (data && data.gains_l_db && data.gains_r_db && data.bands_hz && data.levels_l_db && data.levels_r_db) {
           updateTarget(data);
         }
       } catch (_) {}
     }
 
-    async function runAnalysis() {
+    function collectPayload(includeAction = null) {
       const payload = {
         mode: document.getElementById('modeSel').value,
         style: document.getElementById('styleSel').value,
         seconds: Number(document.getElementById('secondsInp').value || 4),
+        rate: Number(document.getElementById('rateInp').value || 48000),
+        high_res: document.getElementById('highResChk').checked,
+        interval: Number(document.getElementById('intervalInp').value || 1.5),
+        smooth_alpha: Number(document.getElementById('smoothInp').value || 0.4),
         max_boost: Number(document.getElementById('boostInp').value || 6),
         max_cut: Number(document.getElementById('cutInp').value || 6),
         manual_profile: document.getElementById('manualProfileInp').value,
+        model_path: document.getElementById('modelPathInp').value,
+        source: document.getElementById('sourceInp').value,
         apply: document.getElementById('applyChk').checked,
       };
+      if (includeAction) payload.action = includeAction;
+      return payload;
+    }
 
-      const status = document.getElementById('runStatus');
-      status.textContent = 'Running...';
-      status.style.color = '#ffe39a';
+    async function runAnalysis() {
+      setStatus('runStatus', 'Run: running...', 'warn');
       try {
         const res = await fetch('/api/run', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(collectPayload(null)),
+        });
+        const data = await res.json();
+        if (!res.ok || !data.ok) throw new Error(data.error || 'request failed');
+        setStatus('runStatus', `Run: done (${data.mode}/${data.style})`, 'ok');
+        await fetchSnapshot();
+      } catch (err) {
+        setStatus('runStatus', `Run: error (${err.message})`, 'err');
+      }
+    }
+
+    async function runParametric() {
+      setStatus('runStatus', 'Parametric EQ: analysing...', 'warn');
+      try {
+        const payload = {
+          style: document.getElementById('styleSel').value,
+          apply: true,
+          seconds: parseInt(document.getElementById('secondsInp').value) || 6,
+          rate: parseInt(document.getElementById('rateInp').value) || 48000,
+          max_boost: parseFloat(document.getElementById('maxBoostInp')?.value) || 6.0,
+          max_cut: parseFloat(document.getElementById('maxCutInp')?.value) || 6.0,
+          source: document.getElementById('sourceInp')?.value || '',
+        };
+        const res = await fetch('/api/run_parametric', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload),
         });
         const data = await res.json();
-        if (!res.ok || !data.ok) {
-          throw new Error(data.error || 'Request failed');
-        }
-        status.textContent = `Done (${data.mode}/${data.style})`;
-        status.style.color = '#9ad9b2';
+        if (!res.ok || !data.ok) throw new Error(data.error || 'request failed');
+        paramBandsL = data.bands_l || [];
+        paramBandsR = data.bands_r || [];
+        const nb = paramBandsL.length;
+        setStatus('runStatus', `Parametric EQ: ${nb} Bänder gesetzt (${data.model})`, 'ok');
         await fetchSnapshot();
       } catch (err) {
-        status.textContent = `Error: ${err.message}`;
-        status.style.color = '#ff9c9c';
+        setStatus('runStatus', `Parametric EQ: error (${err.message})`, 'err');
       }
     }
 
-    function drawGrid(x0, y0, w, h, minDb, maxDb) {
-      ctx.strokeStyle = '#21445a';
-      ctx.lineWidth = 1;
-      for (let db = minDb; db <= maxDb; db += 3) {
-        const y = y0 + (maxDb - db) / (maxDb - minDb) * h;
-        ctx.beginPath();
-        ctx.moveTo(x0, y);
-        ctx.lineTo(x0 + w, y);
-        ctx.stroke();
+    async function setAgent(action) {
+      try {
+        const res = await fetch('/api/eq_agent', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(collectPayload(action)),
+        });
+        const data = await res.json();
+        if (!res.ok || !data.ok) throw new Error(data.error || 'agent request failed');
+        const running = data.agent.running ? 'running' : 'stopped';
+        setStatus('agentStatus', `Agent: ${running} | iter=${data.agent.iteration}`, data.agent.running ? 'ok' : 'warn');
+      } catch (err) {
+        setStatus('agentStatus', `Agent: error (${err.message})`, 'err');
       }
     }
 
-    function draw() {
-      const w = canvas.width;
-      const h = canvas.height;
-      ctx.clearRect(0, 0, w, h);
+    async function refreshAgentStatus() {
+      try {
+        const res = await fetch('/api/eq_agent', { cache: 'no-store' });
+        const data = await res.json();
+        if (!res.ok || !data.ok) return;
+        const running = data.agent.running ? 'running' : 'stopped';
+        agentRunningCache = !!data.agent.running;
+        const err = data.agent.last_error ? ` | err=${data.agent.last_error}` : '';
+        setStatus('agentStatus', `Agent: ${running} | iter=${data.agent.iteration}${err}`, data.agent.running ? 'ok' : 'warn');
+      } catch (_) {}
+    }
 
-      const padL = 60, padR = 20, padT = 18, padB = 78;
+    function providerLine(name, p) {
+      if (!p || !p.configured) return `${name}=off`;
+      if (typeof p.ok === 'boolean') return `${name}=${p.ok ? 'ok' : 'error'}`;
+      return `${name}=configured`;
+    }
+
+    async function refreshProviderStatus(probe = false) {
+      try {
+        const url = probe ? '/api/provider_health?probe=1' : '/api/provider_health';
+        const res = await fetch(url, { cache: 'no-store' });
+        const data = await res.json();
+        const text = `Providers: ${providerLine('openai', data.openai)} | ${providerLine('claude', data.claude)}`;
+        const kind = text.includes('error') ? 'err' : (text.includes('ok') ? 'ok' : 'warn');
+        setStatus('providerStatus', text, kind);
+      } catch (err) {
+        setStatus('providerStatus', `Providers: status error (${err.message})`, 'err');
+      }
+    }
+
+    function refreshHints() {
+      const seconds = Number(document.getElementById('secondsInp').value || 4);
+      const interval = Number(document.getElementById('intervalInp').value || 1.5);
+      const smoothing = Number(document.getElementById('smoothInp').value || 0.4);
+      const rate = Number(document.getElementById('rateInp').value || 48000);
+      const highRes = document.getElementById('highResChk').checked;
+      const profile = document.getElementById('visProfileSel') ? document.getElementById('visProfileSel').value : 'studio';
+      const snap = document.getElementById('splitSnapChk') ? document.getElementById('splitSnapChk').checked : true;
+      const adaptive = document.getElementById('adaptiveFpsChk') ? document.getElementById('adaptiveFpsChk').checked : true;
+      const eqGlow = document.getElementById('eqFlashSel') ? document.getElementById('eqFlashSel').value : 'subtle';
+
+      let text = `Timing: sec=${seconds}, interval=${interval.toFixed(1)}s, smoothing=${smoothing.toFixed(2)}.`;
+      if (highRes && rate < 96000) text += ' High-Res aktiv aber <96k: auto fallback auf 20k.';
+      else if (seconds <= 2 && interval <= 1.0) text += ' Sehr reaktiv.';
+      else if (seconds >= 4 && smoothing <= 0.3) text += ' Eher stabil und smooth.';
+      text += ` Mode=${document.getElementById('modeSel').value}, viz=${profile}, snap=${snap ? 'on' : 'off'}, adaptiveFPS=${adaptive ? 'on' : 'off'}, eqGlow=${eqGlow}.`;
+      setStatus('timingHint', text, 'neutral');
+    }
+
+    function applyPreset(name) {
+      const rateInp = document.getElementById('rateInp');
+      const highResChk = document.getElementById('highResChk');
+      const secondsInp = document.getElementById('secondsInp');
+      const intervalInp = document.getElementById('intervalInp');
+      const smoothInp = document.getElementById('smoothInp');
+      const modeSel = document.getElementById('modeSel');
+      const boostInp = document.getElementById('boostInp');
+      const cutInp = document.getElementById('cutInp');
+
+      if (name === 'live_fast') {
+        modeSel.value = 'hybrid_openai';
+        rateInp.value = '48000';
+        highResChk.checked = false;
+        secondsInp.value = '2';
+        intervalInp.value = '1.0';
+        smoothInp.value = '0.5';
+        boostInp.value = '6';
+        cutInp.value = '6';
+        setStatus('runStatus', 'Preset geladen: Live Fast', 'ok');
+      } else if (name === 'live_smooth') {
+        modeSel.value = 'hybrid_openai';
+        rateInp.value = '48000';
+        highResChk.checked = false;
+        secondsInp.value = '4';
+        intervalInp.value = '1.5';
+        smoothInp.value = '0.3';
+        boostInp.value = '5';
+        cutInp.value = '5';
+        setStatus('runStatus', 'Preset geladen: Live Smooth', 'ok');
+      } else if (name === 'hires_studio') {
+        modeSel.value = 'hybrid_openai';
+        rateInp.value = '96000';
+        highResChk.checked = true;
+        secondsInp.value = '4';
+        intervalInp.value = '1.4';
+        smoothInp.value = '0.35';
+        boostInp.value = '5';
+        cutInp.value = '5';
+        setStatus('runStatus', 'Preset geladen: HiRes Studio', 'ok');
+      } else if (name === 'vis_broadcast') {
+        document.getElementById('visProfileSel').value = 'smooth';
+        document.getElementById('splitSnapChk').checked = true;
+        document.getElementById('adaptiveFpsChk').checked = true;
+        document.getElementById('eqFlashSel').value = 'subtle';
+        document.getElementById('smoothInp').value = '0.45';
+        activeVisPreset = 'vis_broadcast';
+        setStatus('runStatus', 'Preset geladen: Visualizer Broadcast', 'ok');
+      } else if (name === 'vis_club') {
+        document.getElementById('visProfileSel').value = 'club';
+        document.getElementById('splitSnapChk').checked = false;
+        document.getElementById('adaptiveFpsChk').checked = false;
+        document.getElementById('eqFlashSel').value = 'medium';
+        document.getElementById('smoothInp').value = '0.55';
+        activeVisPreset = 'vis_club';
+        setStatus('runStatus', 'Preset geladen: Visualizer Club', 'ok');
+      } else if (name === 'vis_studio_master') {
+        document.getElementById('visProfileSel').value = 'studio';
+        document.getElementById('splitSnapChk').checked = true;
+        document.getElementById('adaptiveFpsChk').checked = true;
+        document.getElementById('eqFlashSel').value = 'subtle';
+        document.getElementById('smoothInp').value = '0.35';
+        activeVisPreset = 'vis_studio_master';
+        setStatus('runStatus', 'Preset geladen: Visualizer Studio Master', 'ok');
+      }
+      if (!name.startsWith('vis_')) {
+        activeVisPreset = inferVisPreset();
+      }
+      updateVisPresetUi();
+      refreshHints();
+    }
+
+    function hzToX(hz, padL, pw) {
+      const logMin = Math.log10(20);
+      const logMax = Math.log10(20000);
+      const t = (Math.log10(Math.max(20, Math.min(20000, hz))) - logMin) / (logMax - logMin);
+      return padL + t * pw;
+    }
+
+    function drawSpectrum() {
+      const w = spectrumCanvas.width;
+      const h = spectrumCanvas.height;
+      spectrumCtx.clearRect(0, 0, w, h);
+
+      const padL = 58, padR = 20, padT = 18, padB = 48;
       const pw = w - padL - padR;
       const ph = h - padT - padB;
-      const minDb = -12, maxDb = 12;
+      const minDb = -90;
+      const maxDb = -10;
 
-      drawGrid(padL, padT, pw, ph, minDb, maxDb);
-
-      if (!current || !target) {
-        requestAnimationFrame(draw);
-        return;
+      // dB grid lines
+      spectrumCtx.lineWidth = 1;
+      for (let db = -90; db <= -10; db += 10) {
+        const y = dbToY(db, padT, ph, minDb, maxDb);
+        spectrumCtx.strokeStyle = '#252c35';
+        spectrumCtx.beginPath();
+        spectrumCtx.moveTo(padL, y);
+        spectrumCtx.lineTo(padL + pw, y);
+        spectrumCtx.stroke();
+        spectrumCtx.fillStyle = 'rgba(150, 160, 174, 0.85)';
+        spectrumCtx.font = '11px IBM Plex Sans, ui-sans-serif, system-ui, sans-serif';
+        spectrumCtx.textAlign = 'right';
+        spectrumCtx.fillText(`${db}`, padL - 8, y + 3);
       }
+
+      // Frequency grid lines (log)
+      const freqGrid = [31.25, 62.5, 125, 250, 500, 1000, 2000, 4000, 8000, 16000];
+      spectrumCtx.strokeStyle = 'rgba(42, 49, 59, 0.9)';
+      for (const f of freqGrid) {
+        const x = hzToX(f, padL, pw);
+        spectrumCtx.beginPath();
+        spectrumCtx.moveTo(x, padT);
+        spectrumCtx.lineTo(x, padT + ph);
+        spectrumCtx.stroke();
+      }
+
+      const yBase = dbToY(minDb, padT, ph, minDb, maxDb);
+      const profile = getVisProfile();
+
+      // Decide data source: fast FFT stream or 20-band fallback
+      const hasFast = fastSpectrum && fastSpectrum.freqs && fastSpectrum.bins_l;
+      const freqs = hasFast ? fastSpectrum.freqs : (current ? current.bands : null);
+      const rawL   = hasFast ? fastSpectrum.bins_l : spectrumTargetL;
+      const rawR   = hasFast ? fastSpectrum.bins_r : spectrumTargetR;
+
+      if (freqs && rawL && rawR) {
+        const n = freqs.length;
+        const lerpK = hasFast ? profile.spectrumLerp : 0.18;
+
+        // Init / resize smoothing arrays
+        if (!fastSpecSmL || fastSpecSmL.length !== n) {
+          fastSpecSmL = rawL.slice();
+          fastSpecSmR = rawR.slice();
+        }
+        for (let i = 0; i < n; i++) {
+          if (Number.isFinite(rawL[i])) fastSpecSmL[i] = lerp(fastSpecSmL[i], rawL[i], lerpK);
+          if (Number.isFinite(rawR[i])) fastSpecSmR[i] = lerp(fastSpecSmR[i], rawR[i], lerpK);
+        }
+
+        // Draw filled area — right channel (behind)
+        spectrumCtx.beginPath();
+        spectrumCtx.moveTo(hzToX(freqs[0], padL, pw), yBase);
+        for (let i = 0; i < n; i++) {
+          spectrumCtx.lineTo(hzToX(freqs[i], padL, pw), dbToY(Math.max(minDb, fastSpecSmR[i]), padT, ph, minDb, maxDb));
+        }
+        spectrumCtx.lineTo(hzToX(freqs[n - 1], padL, pw), yBase);
+        spectrumCtx.closePath();
+        const gR = spectrumCtx.createLinearGradient(0, padT, 0, yBase);
+        gR.addColorStop(0, 'rgba(195, 210, 228, 0.28)');
+        gR.addColorStop(1, 'rgba(140, 155, 175, 0.06)');
+        spectrumCtx.fillStyle = gR;
+        spectrumCtx.fill();
+        spectrumCtx.beginPath();
+        for (let i = 0; i < n; i++) {
+          const x = hzToX(freqs[i], padL, pw);
+          const y = dbToY(Math.max(minDb, fastSpecSmR[i]), padT, ph, minDb, maxDb);
+          i === 0 ? spectrumCtx.moveTo(x, y) : spectrumCtx.lineTo(x, y);
+        }
+        spectrumCtx.strokeStyle = 'rgba(185, 200, 220, 0.55)';
+        spectrumCtx.lineWidth = 1.2;
+        spectrumCtx.stroke();
+
+        // Draw filled area — left channel (front)
+        spectrumCtx.beginPath();
+        spectrumCtx.moveTo(hzToX(freqs[0], padL, pw), yBase);
+        for (let i = 0; i < n; i++) {
+          spectrumCtx.lineTo(hzToX(freqs[i], padL, pw), dbToY(Math.max(minDb, fastSpecSmL[i]), padT, ph, minDb, maxDb));
+        }
+        spectrumCtx.lineTo(hzToX(freqs[n - 1], padL, pw), yBase);
+        spectrumCtx.closePath();
+        const gL = spectrumCtx.createLinearGradient(0, padT, 0, yBase);
+        gL.addColorStop(0, 'rgba(100, 150, 220, 0.45)');
+        gL.addColorStop(1, 'rgba(70, 110, 185, 0.08)');
+        spectrumCtx.fillStyle = gL;
+        spectrumCtx.fill();
+        spectrumCtx.beginPath();
+        for (let i = 0; i < n; i++) {
+          const x = hzToX(freqs[i], padL, pw);
+          const y = dbToY(Math.max(minDb, fastSpecSmL[i]), padT, ph, minDb, maxDb);
+          i === 0 ? spectrumCtx.moveTo(x, y) : spectrumCtx.lineTo(x, y);
+        }
+        spectrumCtx.strokeStyle = 'rgba(120, 170, 240, 0.85)';
+        spectrumCtx.lineWidth = 1.6;
+        spectrumCtx.stroke();
+      }
+
+      // EQ gain curve overlay (from snapshot, log-mapped)
+      if (current && current.bands && current.l && current.r) {
+        const bands = current.bands;
+        const nb = bands.length;
+        const midY = padT + ph * 0.62; // visual center for 0 dB gain
+        const gainScale = ph / 28;     // ±14 dB spans full height half
+        const gainToY = (g) => midY - Math.max(-14, Math.min(14, g)) * gainScale;
+
+        // 0 dB reference
+        spectrumCtx.strokeStyle = 'rgba(80, 95, 115, 0.45)';
+        spectrumCtx.lineWidth = 1;
+        spectrumCtx.setLineDash([5, 5]);
+        spectrumCtx.beginPath();
+        spectrumCtx.moveTo(padL, midY);
+        spectrumCtx.lineTo(padL + pw, midY);
+        spectrumCtx.stroke();
+        spectrumCtx.setLineDash([]);
+
+        for (const [gains, strokeColor, fillColor] of [
+          [current.r, 'rgba(210, 165, 60, 0.75)',  'rgba(210, 165, 60, 0.06)'],
+          [current.l, 'rgba(80,  200, 140, 0.90)', 'rgba(80, 200, 140, 0.08)'],
+        ]) {
+          spectrumCtx.beginPath();
+          spectrumCtx.moveTo(padL, gainToY(gains[0]));
+          for (let i = 0; i < nb; i++) {
+            spectrumCtx.lineTo(hzToX(bands[i], padL, pw), gainToY(gains[i]));
+          }
+          spectrumCtx.lineTo(padL + pw, gainToY(gains[nb - 1]));
+          // filled area under curve to 0dB line
+          spectrumCtx.lineTo(padL + pw, midY);
+          spectrumCtx.lineTo(padL, midY);
+          spectrumCtx.closePath();
+          spectrumCtx.fillStyle = fillColor;
+          spectrumCtx.fill();
+          // draw the curve line on top
+          spectrumCtx.beginPath();
+          spectrumCtx.moveTo(padL, gainToY(gains[0]));
+          for (let i = 0; i < nb; i++) {
+            spectrumCtx.lineTo(hzToX(bands[i], padL, pw), gainToY(gains[i]));
+          }
+          spectrumCtx.lineTo(padL + pw, gainToY(gains[nb - 1]));
+          spectrumCtx.strokeStyle = strokeColor;
+          spectrumCtx.lineWidth = 2.0;
+          spectrumCtx.stroke();
+        }
+      }
+
+      // Frequency labels on log axis
+      const lblHz  = [31.25, 62.5, 125, 250, 500, 1000, 2000, 4000, 8000, 16000];
+      const lblTxt = ['31',  '63', '125', '250', '500', '1k', '2k', '4k', '8k', '16k'];
+      spectrumCtx.fillStyle = '#8d97a5';
+      spectrumCtx.font = '11px IBM Plex Sans, ui-sans-serif, system-ui, sans-serif';
+      spectrumCtx.textAlign = 'center';
+      for (let i = 0; i < lblHz.length; i++) {
+        spectrumCtx.fillText(lblTxt[i], hzToX(lblHz[i], padL, pw), h - 16);
+      }
+      spectrumCtx.fillStyle = 'rgba(150, 160, 174, 0.85)';
+      spectrumCtx.font = '11px IBM Plex Sans, ui-sans-serif, system-ui, sans-serif';
+      spectrumCtx.textAlign = 'left';
+      spectrumCtx.fillText('dBFS', 8, padT + 12);
+      if (current && current.bands) {
+        spectrumCtx.fillStyle = 'rgba(80, 200, 140, 0.7)';
+        spectrumCtx.textAlign = 'right';
+        spectrumCtx.fillText('L gain', padL - 8, padT + 12);
+      }
+    }
+
+    function drawEq() {
+      const w = eqCanvas.width;
+      const h = eqCanvas.height;
+      eqCtx.clearRect(0, 0, w, h);
+
+      const padL = 58, padR = 20, padT = 18, padB = 52;
+      const pw = w - padL - padR;
+      const ph = h - padT - padB;
+      const minDb = -12;
+      const maxDb = 12;
+
+      eqCtx.strokeStyle = '#252c35';
+      eqCtx.lineWidth = 1;
+      for (let db = minDb; db <= maxDb; db += 3) {
+        const y = dbToY(db, padT, ph, minDb, maxDb);
+        eqCtx.beginPath();
+        eqCtx.moveTo(padL, y);
+        eqCtx.lineTo(padL + pw, y);
+        eqCtx.stroke();
+      }
+
+      if (!current || !target) return;
+
+      const n = current.bands.length;
+      const pairW = pw / n;
+      const barW = pairW * 0.32;
 
       for (let i = 0; i < current.l.length; i++) {
         current.l[i] = lerp(current.l[i], target.l[i], 0.16);
         current.r[i] = lerp(current.r[i], target.r[i], 0.16);
       }
 
-      const n = current.bands.length;
-      const pairW = pw / n;
-      const barW = pairW * 0.34;
+      for (let hIdx = 0; hIdx < overlayHistory.length; hIdx++) {
+        const item = overlayHistory[hIdx];
+        const age = overlayHistory.length - 1 - hIdx;
+        const alpha = Math.max(0.05, 0.32 - age * 0.013);
+
+        eqCtx.beginPath();
+        for (let i = 0; i < n; i++) {
+          const x = padL + i * pairW + pairW * 0.22;
+          const y = dbToY(item.l[i], padT, ph, minDb, maxDb);
+          if (i === 0) eqCtx.moveTo(x, y);
+          else eqCtx.lineTo(x, y);
+        }
+        eqCtx.strokeStyle = `rgba(158, 184, 215, ${alpha})`;
+        eqCtx.lineWidth = 1.2;
+        eqCtx.stroke();
+
+        eqCtx.beginPath();
+        for (let i = 0; i < n; i++) {
+          const x = padL + i * pairW + pairW * 0.78;
+          const y = dbToY(item.r[i], padT, ph, minDb, maxDb);
+          if (i === 0) eqCtx.moveTo(x, y);
+          else eqCtx.lineTo(x, y);
+        }
+        eqCtx.strokeStyle = `rgba(210, 216, 222, ${alpha})`;
+        eqCtx.lineWidth = 1.2;
+        eqCtx.stroke();
+      }
 
       for (let i = 0; i < n; i++) {
         const xPair = padL + i * pairW;
@@ -246,34 +1403,457 @@
         const l = Math.max(minDb, Math.min(maxDb, current.l[i]));
         const r = Math.max(minDb, Math.min(maxDb, current.r[i]));
 
-        const yZero = padT + (maxDb - 0) / (maxDb - minDb) * ph;
-        const yL = padT + (maxDb - l) / (maxDb - minDb) * ph;
-        const yR = padT + (maxDb - r) / (maxDb - minDb) * ph;
+        const y0 = dbToY(0, padT, ph, minDb, maxDb);
+        const yL = dbToY(l, padT, ph, minDb, maxDb);
+        const yR = dbToY(r, padT, ph, minDb, maxDb);
 
-        ctx.fillStyle = '#67c6ff';
-        ctx.fillRect(xL, Math.min(yZero, yL), barW, Math.abs(yZero - yL));
+        eqCtx.fillStyle = '#9eb8d7';
+        eqCtx.fillRect(xL, Math.min(y0, yL), barW, Math.abs(y0 - yL));
 
-        ctx.fillStyle = '#66e2a8';
-        ctx.fillRect(xR, Math.min(yZero, yR), barW, Math.abs(yZero - yR));
+        eqCtx.fillStyle = '#d2d8de';
+        eqCtx.fillRect(xR, Math.min(y0, yR), barW, Math.abs(y0 - yR));
 
-        if (i % 2 === 0) {
-          ctx.fillStyle = '#9cc6dd';
-          ctx.font = '12px DejaVu Sans';
-          ctx.textAlign = 'center';
-          ctx.fillText(Math.round(current.bands[i]).toString(), xPair + pairW * 0.5, h - 32);
+        if (i % 2 === 0 || i === n - 1) {
+          eqCtx.fillStyle = '#98a4b3';
+          eqCtx.font = '11px IBM Plex Sans, ui-sans-serif, system-ui, sans-serif';
+          eqCtx.textAlign = 'center';
+          eqCtx.fillText(formatBandHz(current.bands[i]), xPair + pairW * 0.5, h - 18);
         }
       }
 
-      ctx.strokeStyle = '#5f9fbc';
-      ctx.strokeRect(padL, padT, pw, ph);
+      const flash = getEqFlashProfile();
+      if (flash.enabled && updateFlash > 0.01) {
+        const a = Math.min(flash.max, updateFlash * flash.max);
+        eqCtx.fillStyle = `rgba(120, 150, 182, ${a * flash.fill})`;
+        eqCtx.fillRect(padL, padT, pw, ph);
+        eqCtx.strokeStyle = `rgba(170, 192, 214, ${a * flash.stroke})`;
+        eqCtx.lineWidth = flash.lw;
+        eqCtx.strokeRect(padL + 0.5, padT + 0.5, pw - 1, ph - 1);
+      }
 
-      requestAnimationFrame(draw);
+      // Parametric EQ curve overlay
+      if (paramBandsL.length > 0 || paramBandsR.length > 0) {
+        drawParamCurve(eqCtx, paramBandsL, padL, padT, pw, ph, minDb, maxDb, h,
+          'rgba(80, 200, 140, 0.90)', 'rgba(80, 200, 140, 0.10)');
+        drawParamCurve(eqCtx, paramBandsR, padL, padT, pw, ph, minDb, maxDb, h,
+          'rgba(210, 165, 60, 0.85)', 'rgba(210, 165, 60, 0.08)');
+        // Band markers
+        drawParamBandMarkers(eqCtx, paramBandsL, padL, padT, pw, ph, minDb, maxDb, '#50c88c', h);
+      }
+
+      const last = overlayHistory[overlayHistory.length - 1];
+      const ageSec = last ? ((Date.now() - last.t) / 1000).toFixed(1) : '-';
+      eqCtx.fillStyle = 'rgba(220, 228, 238, 0.9)';
+      eqCtx.font = '12px IBM Plex Sans, ui-sans-serif, system-ui, sans-serif';
+      eqCtx.textAlign = 'left';
+      eqCtx.fillText(`Overlay updates: ${overlayHistory.length} | last ${ageSec}s | #${updateCounter}`, padL + 8, padT + 15);
     }
 
-    setInterval(fetchSnapshot, 1200);
+    // --- Parametric EQ curve math (IIR biquad, RLC BT) ---
+    function biquadGainDb(freq, sampleRate, bandFreq, q, gainDb, type) {
+      const w0 = 2 * Math.PI * bandFreq / sampleRate;
+      const w  = 2 * Math.PI * freq / sampleRate;
+      const A  = Math.pow(10, gainDb / 40);
+      const alpha = Math.sin(w0) / (2 * q);
+      let b0, b1, b2, a0, a1, a2;
+
+      if (type === 'Bell') {
+        b0 = 1 + alpha * A;  b1 = -2 * Math.cos(w0);  b2 = 1 - alpha * A;
+        a0 = 1 + alpha / A;  a1 = b1;                  a2 = 1 - alpha / A;
+      } else if (type === 'Low Shelf') {
+        const sqA = Math.sqrt(A);
+        b0 = A * ((A+1) - (A-1)*Math.cos(w0) + 2*sqA*alpha);
+        b1 = 2*A*((A-1) - (A+1)*Math.cos(w0));
+        b2 = A * ((A+1) - (A-1)*Math.cos(w0) - 2*sqA*alpha);
+        a0 = (A+1) + (A-1)*Math.cos(w0) + 2*sqA*alpha;
+        a1 = -2*((A-1) + (A+1)*Math.cos(w0));
+        a2 = (A+1) + (A-1)*Math.cos(w0) - 2*sqA*alpha;
+      } else if (type === 'High Shelf') {
+        const sqA = Math.sqrt(A);
+        b0 = A * ((A+1) + (A-1)*Math.cos(w0) + 2*sqA*alpha);
+        b1 = -2*A*((A-1) + (A+1)*Math.cos(w0));
+        b2 = A * ((A+1) + (A-1)*Math.cos(w0) - 2*sqA*alpha);
+        a0 = (A+1) - (A-1)*Math.cos(w0) + 2*sqA*alpha;
+        a1 = 2*((A-1) - (A+1)*Math.cos(w0));
+        a2 = (A+1) - (A-1)*Math.cos(w0) - 2*sqA*alpha;
+      } else if (type === 'Notch') {
+        b0 = 1; b1 = -2*Math.cos(w0); b2 = 1;
+        a0 = 1 + alpha; a1 = b1; a2 = 1 - alpha;
+      } else if (type === 'High Pass') {
+        b0 = (1 + Math.cos(w0))/2; b1 = -(1+Math.cos(w0)); b2 = b0;
+        a0 = 1 + alpha; a1 = -2*Math.cos(w0); a2 = 1 - alpha;
+      } else { // Low Pass
+        b0 = (1 - Math.cos(w0))/2; b1 = 1 - Math.cos(w0); b2 = b0;
+        a0 = 1 + alpha; a1 = -2*Math.cos(w0); a2 = 1 - alpha;
+      }
+      // H(e^jw) via bilinear substitution evaluation
+      const cosW = Math.cos(w); const cos2W = Math.cos(2*w);
+      const sinW = Math.sin(w); const sin2W = Math.sin(2*w);
+      const Bre = b0 + b1*cosW + b2*cos2W, Bim = -(b1*sinW + b2*sin2W);
+      const Are = a0 + a1*cosW + a2*cos2W, Aim = -(a1*sinW + a2*sin2W);
+      const mag2 = (Bre*Are + Bim*Aim)**2 + (Bim*Are - Bre*Aim)**2;
+      const den2 = Are*Are + Aim*Aim;
+      if (den2 < 1e-30) return 0;
+      return 10 * Math.log10(Math.max(1e-30, mag2 / (den2 * den2)));
+    }
+
+    function totalParamCurve(freqs, bands, sampleRate = 48000) {
+      return freqs.map(f => {
+        let db = 0;
+        for (const b of bands) db += biquadGainDb(f, sampleRate, b.freq, b.q, b.gain, b.type);
+        return db;
+      });
+    }
+
+    function drawParamCurve(ctx, bands, padL, padT, pw, ph, minDb, maxDb, h, strokeColor, fillColor) {
+      if (!bands || bands.length === 0) return;
+      const N = 300;
+      const logMin = Math.log10(20), logMax = Math.log10(20000);
+      const freqs = Array.from({length: N}, (_, i) => Math.pow(10, logMin + (i / (N-1)) * (logMax - logMin)));
+      const curve = totalParamCurve(freqs, bands);
+      const y0 = dbToY(0, padT, ph, minDb, maxDb);
+
+      ctx.beginPath();
+      for (let i = 0; i < N; i++) {
+        const x = padL + ((Math.log10(freqs[i]) - logMin) / (logMax - logMin)) * pw;
+        const y = dbToY(Math.max(minDb, Math.min(maxDb, curve[i])), padT, ph, minDb, maxDb);
+        i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+      }
+      // Close fill area to 0dB line
+      ctx.lineTo(padL + pw, y0);
+      ctx.lineTo(padL, y0);
+      ctx.closePath();
+      ctx.fillStyle = fillColor;
+      ctx.fill();
+
+      ctx.beginPath();
+      for (let i = 0; i < N; i++) {
+        const x = padL + ((Math.log10(freqs[i]) - logMin) / (logMax - logMin)) * pw;
+        const y = dbToY(Math.max(minDb, Math.min(maxDb, curve[i])), padT, ph, minDb, maxDb);
+        i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+      }
+      ctx.strokeStyle = strokeColor;
+      ctx.lineWidth = 2.2;
+      ctx.stroke();
+    }
+
+    function drawParamBandMarkers(ctx, bands, padL, padT, pw, ph, minDb, maxDb, color, h) {
+      const logMin = Math.log10(20), logMax = Math.log10(20000);
+      ctx.font = '10px IBM Plex Sans, ui-sans-serif, system-ui, sans-serif';
+      ctx.textAlign = 'center';
+      for (const b of bands) {
+        const x = padL + ((Math.log10(Math.max(20, Math.min(20000, b.freq))) - logMin) / (logMax - logMin)) * pw;
+        const y = dbToY(Math.max(minDb, Math.min(maxDb, b.gain)), padT, ph, minDb, maxDb);
+        ctx.beginPath();
+        ctx.arc(x, y, 4, 0, 2 * Math.PI);
+        ctx.fillStyle = color;
+        ctx.fill();
+        ctx.strokeStyle = 'rgba(0,0,0,0.5)';
+        ctx.lineWidth = 1;
+        ctx.stroke();
+        // Label: freq + gain
+        const label = `${b.freq >= 1000 ? (b.freq/1000).toFixed(1)+'k' : Math.round(b.freq)} ${b.gain > 0 ? '+' : ''}${b.gain.toFixed(1)}`;
+        ctx.fillStyle = color;
+        ctx.fillText(label, x, y - 8);
+      }
+    }
+
+    function resizeCanvases() {
+      const sRect = spectrumCanvas.getBoundingClientRect();
+      const eRect = eqCanvas.getBoundingClientRect();
+      spectrumCanvas.width = Math.max(600, Math.floor(sRect.width * 1.5));
+      spectrumCanvas.height = Math.max(220, Math.floor(sRect.height * 1.5));
+      eqCanvas.width = Math.max(600, Math.floor(eRect.width * 1.5));
+      eqCanvas.height = Math.max(220, Math.floor(eRect.height * 1.5));
+    }
+
+    function initSplitters() {
+      const root = document.documentElement;
+      const layout = document.querySelector('.layout');
+      const leftPane = document.querySelector('.left-pane');
+      const vizStack = document.getElementById('vizStack');
+      const vSplit = document.getElementById('vSplit');
+      const hSplit = document.getElementById('hSplit');
+      const storageKeyRight = 'eq_ui_right_pane_width';
+      const storageKeySpectrum = 'eq_ui_spectrum_height';
+
+      const savedRight = Number(localStorage.getItem(storageKeyRight) || 0);
+      if (savedRight >= 320 && savedRight <= 620) {
+        root.style.setProperty('--right-pane-width', `${savedRight}px`);
+      }
+      const savedSpectrum = Number(localStorage.getItem(storageKeySpectrum) || 0);
+      if (savedSpectrum >= 28 && savedSpectrum <= 72) {
+        root.style.setProperty('--spectrum-height', `${savedSpectrum}%`);
+      }
+
+      let rafId = 0;
+      let lastEvent = null;
+
+      const applyPointerMove = () => {
+        rafId = 0;
+        if (!lastEvent) return;
+        const ev = lastEvent;
+
+        if (isDraggingV) {
+          const rect = layout.getBoundingClientRect();
+          const x = ev.clientX - rect.left;
+          const clampedLeft = Math.max(460, Math.min(rect.width - 320 - 8, x));
+          let rightWidth = Math.max(320, Math.min(620, rect.width - clampedLeft - 8));
+          const snapEnabled = document.getElementById('splitSnapChk')?.checked;
+          if (snapEnabled) rightWidth = Math.round(rightWidth / 20) * 20;
+          root.style.setProperty('--right-pane-width', `${rightWidth}px`);
+          localStorage.setItem(storageKeyRight, String(Math.round(rightWidth)));
+          resizeCanvases();
+        }
+        if (isDraggingH) {
+          const rect = vizStack.getBoundingClientRect();
+          const y = ev.clientY - rect.top;
+          const clamped = Math.max(150, Math.min(rect.height - 160, y));
+          let pct = (clamped / rect.height) * 100;
+          const snapEnabled = document.getElementById('splitSnapChk')?.checked;
+          if (snapEnabled) pct = Math.round(pct / 2.5) * 2.5;
+          pct = Math.max(28, Math.min(72, pct));
+          root.style.setProperty('--spectrum-height', `${pct}%`);
+          localStorage.setItem(storageKeySpectrum, String(Math.round(pct * 10) / 10));
+          resizeCanvases();
+        }
+      };
+
+      const onMove = (ev) => {
+        if (!isDraggingV && !isDraggingH) return;
+        lastEvent = ev;
+        if (!rafId) rafId = requestAnimationFrame(applyPointerMove);
+      };
+
+      const stopDrag = () => {
+        if (isDraggingV || isDraggingH) {
+          isDraggingV = false;
+          isDraggingH = false;
+          vSplit.classList.remove('dragging');
+          hSplit.classList.remove('dragging');
+          document.body.classList.remove('dragging');
+        }
+      };
+
+      vSplit.addEventListener('pointerdown', (ev) => {
+        ev.preventDefault();
+        isDraggingV = true;
+        vSplit.classList.add('dragging');
+        document.body.classList.add('dragging');
+      });
+      hSplit.addEventListener('pointerdown', (ev) => {
+        ev.preventDefault();
+        isDraggingH = true;
+        hSplit.classList.add('dragging');
+        document.body.classList.add('dragging');
+      });
+
+      window.addEventListener('pointermove', onMove);
+      window.addEventListener('pointerup', stopDrag);
+      window.addEventListener('mouseleave', stopDrag);
+
+      vSplit.addEventListener('dblclick', () => {
+        root.style.setProperty('--right-pane-width', '390px');
+        localStorage.removeItem(storageKeyRight);
+        resizeCanvases();
+      });
+      leftPane.addEventListener('dblclick', (ev) => {
+        if (ev.target === hSplit) {
+          root.style.setProperty('--spectrum-height', '50%');
+          localStorage.removeItem(storageKeySpectrum);
+          resizeCanvases();
+        }
+      });
+    }
+
+    function connectStream() {
+      const reconnectBanner = document.getElementById('reconnectBanner');
+      const es = new EventSource('/api/stream');
+      es.addEventListener('snapshot', (ev) => {
+        try {
+          const data = JSON.parse(ev.data);
+          if (data && data.gains_l_db && data.gains_r_db && data.bands_hz && data.levels_l_db && data.levels_r_db) {
+            updateTarget(data);
+            setStatus('streamStatus', 'Stream: live', 'ok');
+            reconnectBanner.classList.remove('active');
+          }
+        } catch (_) {}
+      });
+      es.onerror = () => {
+        setStatus('streamStatus', 'Stream: reconnecting...', 'warn');
+        reconnectBanner.classList.add('active');
+      };
+      return es;
+    }
+
+    function connectSpectrumStream() {
+      const es = new EventSource('/api/spectrum_stream');
+      es.addEventListener('spectrum', (ev) => {
+        try {
+          const data = JSON.parse(ev.data);
+          if (data && data.freqs && data.bins_l && data.bins_r) {
+            fastSpectrum = data;
+            setStatus('streamStatus', 'Stream: live', 'ok');
+          }
+        } catch (_) {}
+      });
+      es.onerror = () => {
+        setTimeout(connectSpectrumStream, 2000);
+        es.close();
+      };
+    }
+
+    function getTargetRenderFps() {
+      const adaptive = document.getElementById('adaptiveFpsChk')?.checked;
+      if (!adaptive) return 60;
+      if (document.hidden) return 12;
+      if (isDraggingH || isDraggingV) return 60;
+      if (updateFlash > 0.16 || overlayHistory.length > 0) return 48;
+      return 32;
+    }
+
+    function updateRenderStatus(targetFps) {
+      const adaptive = document.getElementById('adaptiveFpsChk')?.checked;
+      const mode = adaptive ? 'adaptive' : 'fixed';
+      setStatus('renderStatus', `Render: ${mode} target=${targetFps} fps | measured=${renderMeasuredFps.toFixed(1)} fps`, 'neutral');
+    }
+
+    function animate(ts) {
+      if (!renderFpsTs) renderFpsTs = ts;
+      const targetFps = getTargetRenderFps();
+      const minDt = 1000 / targetFps;
+      if (renderLastTs && (ts - renderLastTs) < minDt) {
+        requestAnimationFrame(animate);
+        return;
+      }
+      renderLastTs = ts;
+
+      updateFlash = Math.max(0.0, updateFlash - 0.02);
+      drawSpectrum();
+      drawEq();
+
+      renderFpsFrames += 1;
+      if ((ts - renderFpsTs) >= 1000) {
+        renderMeasuredFps = (renderFpsFrames * 1000) / (ts - renderFpsTs);
+        renderFpsFrames = 0;
+        renderFpsTs = ts;
+        updateRenderStatus(targetFps);
+      }
+
+      requestAnimationFrame(animate);
+    }
+
+    function initTabs() {
+      const tabBtns = Array.from(document.querySelectorAll('.tab-btn'));
+      tabBtns.forEach((btn) => {
+        btn.addEventListener('click', () => {
+          tabBtns.forEach((x) => x.classList.remove('active'));
+          btn.classList.add('active');
+          const targetId = btn.getAttribute('data-tab');
+          document.querySelectorAll('.tab-panel').forEach((p) => p.classList.remove('active'));
+          document.getElementById(targetId).classList.add('active');
+        });
+      });
+    }
+
+    function initHelpButtons() {
+      const helpBox = document.getElementById('helpBox');
+      document.querySelectorAll('.setting-help').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          const text = btn.getAttribute('data-help') || 'Keine Hilfe verfuegbar.';
+          helpBox.textContent = text;
+          document.querySelectorAll('.tab-btn').forEach((b) => b.classList.remove('active'));
+          document.querySelector('[data-tab="helpTab"]').classList.add('active');
+          document.querySelectorAll('.tab-panel').forEach((p) => p.classList.remove('active'));
+          document.getElementById('helpTab').classList.add('active');
+        });
+      });
+    }
+
+    window.addEventListener('resize', resizeCanvases);
+
     document.getElementById('runBtn').addEventListener('click', runAnalysis);
+    document.getElementById('runParamBtn').addEventListener('click', runParametric);
+    document.getElementById('probeBtn').addEventListener('click', () => refreshProviderStatus(true));
+    document.getElementById('agentStartBtn').addEventListener('click', () => setAgent('start'));
+    document.getElementById('agentStopBtn').addEventListener('click', () => setAgent('stop'));
+    document.getElementById('presetLiveFast').addEventListener('click', () => applyPreset('live_fast'));
+    document.getElementById('presetLiveSmooth').addEventListener('click', () => applyPreset('live_smooth'));
+    document.getElementById('presetHiRes').addEventListener('click', () => applyPreset('hires_studio'));
+    document.getElementById('presetVisBroadcast').addEventListener('click', () => applyPreset('vis_broadcast'));
+    document.getElementById('presetVisClub').addEventListener('click', () => applyPreset('vis_club'));
+    document.getElementById('presetVisStudioMaster').addEventListener('click', () => applyPreset('vis_studio_master'));
+
+    ['modeSel', 'secondsInp', 'rateInp', 'highResChk', 'intervalInp', 'smoothInp', 'visProfileSel', 'splitSnapChk', 'adaptiveFpsChk', 'eqFlashSel'].forEach((id) => {
+      const el = document.getElementById(id);
+      const ev = (id === 'highResChk') ? 'change' : 'input';
+      const isBool = id === 'highResChk' || id === 'splitSnapChk' || id === 'adaptiveFpsChk';
+      const evt = isBool ? 'change' : ev;
+      el.addEventListener(evt, () => {
+        const inferred = inferVisPreset();
+        activeVisPreset = inferred === 'custom' ? 'custom' : inferred;
+        updateVisPresetUi();
+        refreshHints();
+        if (id === 'eqFlashSel') {
+          localStorage.setItem('eq_ui_eq_flash', document.getElementById('eqFlashSel').value);
+        }
+      });
+    });
+
+    window.addEventListener('keydown', (ev) => {
+      if (ev.target && (ev.target.tagName === 'INPUT' || ev.target.tagName === 'SELECT' || ev.target.tagName === 'TEXTAREA')) {
+        return;
+      }
+      const k = ev.key.toLowerCase();
+      if (k === 'r') {
+        ev.preventDefault();
+        runAnalysis();
+      } else if (k === 'p') {
+        ev.preventDefault();
+        refreshProviderStatus(true);
+      } else if (k === ' ') {
+        ev.preventDefault();
+        setAgent(agentRunningCache ? 'stop' : 'start');
+      } else if (k === '1') {
+        ev.preventDefault();
+        applyPreset('vis_broadcast');
+      } else if (k === '2') {
+        ev.preventDefault();
+        applyPreset('vis_club');
+      } else if (k === '3') {
+        ev.preventDefault();
+        applyPreset('vis_studio_master');
+      }
+    });
+
+    resizeCanvases();
+    initTabs();
+    initHelpButtons();
+    initSplitters();
+    const savedEqFlash = localStorage.getItem('eq_ui_eq_flash');
+    if (savedEqFlash === 'off' || savedEqFlash === 'subtle' || savedEqFlash === 'medium') {
+      document.getElementById('eqFlashSel').value = savedEqFlash;
+    }
+    const savedVisPreset = localStorage.getItem('eq_ui_active_vis_preset');
+    if (savedVisPreset === 'vis_broadcast' || savedVisPreset === 'vis_club' || savedVisPreset === 'vis_studio_master') {
+      applyPreset(savedVisPreset);
+    } else {
+      activeVisPreset = 'vis_studio_master';
+      updateVisPresetUi();
+    }
+    connectStream();
+    connectSpectrumStream();
+
     fetchSnapshot();
-    requestAnimationFrame(draw);
+    refreshAgentStatus();
+    refreshProviderStatus(false);
+    refreshHints();
+
+    setInterval(fetchSnapshot, 800);
+    setInterval(refreshAgentStatus, 1200);
+    setInterval(() => refreshProviderStatus(false), 6000);
+
+    animate();
   </script>
 </body>
 </html>
